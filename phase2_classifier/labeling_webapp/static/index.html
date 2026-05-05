@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>S2 Lifecycle Labeler</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div id="header-main">
+        <span id="site-progress"></span>
+        <span id="site-name"></span>
+        <span id="site-state"></span>
+        <span id="site-type-badge"></span>
+        <span id="project-type-badge"></span>
+        <span id="site-ann"></span>
+        <span id="site-flag"></span>
+        <a id="site-coords" target="_blank" rel="noopener"></a>
+      </div>
+      <div id="counts"></div>
+    </header>
+
+    <div id="note-row">
+      <label for="note-input">note:</label>
+      <input id="note-input" type="text" placeholder="press n to focus — e.g. 'site in bottom-right corner'">
+    </div>
+
+    <div id="strip"></div>
+
+    <aside id="reference">
+      <div class="ref-label">latest (<span id="ref-year">—</span>)</div>
+      <div class="ref-img-wrap">
+        <img id="ref-img" alt="latest year reference">
+        <svg id="ref-outline" class="outline-svg" viewBox="0 0 1 1" preserveAspectRatio="none"></svg>
+      </div>
+    </aside>
+
+    <footer>
+      <div id="legend">
+        <span><kbd>←</kbd>/<kbd>→</kbd> focus year</span>
+        <span><kbd>1</kbd> not_a_site</span>
+        <span><kbd>2</kbd> partial</span>
+        <span><kbd>3</kbd> complete</span>
+        <span><kbd>u</kbd> unsure</span>
+        <span><kbd>x</kbd> clear</span>
+        <span><kbd>Enter</kbd>/<kbd>↓</kbd> next site</span>
+        <span><kbd>↑</kbd> prev site</span>
+        <span><kbd>s</kbd> flag bad geocode</span>
+        <span><kbd>n</kbd> edit note</span>
+        <span><kbd>o</kbd> draw outline</span>
+        <span><kbd>shift+O</kbd> clear outline</span>
+      </div>
+      <div id="status"></div>
+    </footer>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
