@@ -1,0 +1,30 @@
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3.10 python3-pip python3.10-venv \
+        libgdal-dev gdal-bin \
+        wget ca-certificates \
+        git \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3.10 /usr/bin/python
+
+WORKDIR /opt/sam
+
+# SAM ViT-H weights baked into the image (~2.4 GB) for reproducibility
+# and zero cold-start fetch.
+RUN wget -q https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth
+
+COPY requirements-sam.txt /tmp/requirements-sam.txt
+RUN pip install --no-cache-dir torch==2.1.0 --index-url https://download.pytorch.org/whl/cu121 \
+    && pip install --no-cache-dir -r /tmp/requirements-sam.txt
+
+COPY stage2_sam_inference.py /opt/sam/stage2_sam_inference.py
+
+ENV SAM_CHECKPOINT=/opt/sam/sam_vit_h_4b8939.pth \
+    SAM_MODEL_TYPE=vit_h
+
+ENTRYPOINT ["python", "/opt/sam/stage2_sam_inference.py"]

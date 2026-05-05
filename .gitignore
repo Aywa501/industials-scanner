@@ -1,0 +1,29 @@
+# Secrets
+.env
+
+# Local caches and pipeline artifacts
+.cache/
+.artifacts/
+
+# OS / editor cruft
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Large binary outputs that may end up at the repo root
+*.tif
+*.pt
+*.pth
+*.parquet
+
+# Logs
+*.log
