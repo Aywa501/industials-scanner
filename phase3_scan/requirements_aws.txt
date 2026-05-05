@@ -1,0 +1,11 @@
+# Extra deps for the Phase 3 CONUS scan pipeline.
+# Install on top of sites_us/requirements.txt.
+
+# Local-side (grid building, STAC search, aggregation)
+mgrs>=1.4.6
+pystac-client>=0.7.5
+boto3>=1.34.0
+
+# EC2-side (worker only — bootstrap.sh installs these)
+# torch, transformers, rasterio[s3] are baked into the Deep Learning AMI or
+# pinned in bootstrap.sh.

@@ -10,6 +10,7 @@ const state = {
   draftOutline: null,  // [[x,y], ...] while in draw mode; null otherwise
   siteIdx: 0,
   yearIdx: 0,
+  showHeatmap: false,  // toggle with 'h'
 };
 
 const KEY_TO_LABEL = { "1": "not_a_site", "2": "partial", "3": "complete", "u": "unsure" };
@@ -141,6 +142,15 @@ function render() {
     img.src = `/chips/${site.site_id}/${y}.png`;
     img.alt = `${site.site_id} ${y}`;
     imgWrap.appendChild(img);
+
+    if (state.showHeatmap) {
+      const heat = document.createElement("img");
+      heat.className = "heatmap-overlay";
+      heat.src = `/heatmaps/${site.site_id}/${y}.png`;
+      heat.alt = "model heatmap";
+      heat.onerror = () => { heat.style.display = "none"; };
+      imgWrap.appendChild(heat);
+    }
 
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", "0 0 1 1");
@@ -400,6 +410,11 @@ async function onKey(e) {
   } else if (e.key === "n") {
     noteInput.focus();
     noteInput.select();
+    e.preventDefault();
+  } else if (e.key === "h") {
+    state.showHeatmap = !state.showHeatmap;
+    setStatus(state.showHeatmap ? "heatmap on (h to toggle)" : "heatmap off");
+    render();
     e.preventDefault();
   } else if (e.key === "o") {
     state.draftOutline = [];

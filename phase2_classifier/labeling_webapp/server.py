@@ -246,3 +246,14 @@ def get_chip(site_id: str, filename: str) -> FileResponse:
     if not p.exists():
         raise HTTPException(404, f"no chip at {p}")
     return FileResponse(p, media_type="image/png")
+
+
+@app.get("/heatmaps/{site_id}/{year}.png")
+def get_heatmap(site_id: str, year: int):
+    from fastapi import Response
+    from phase2_classifier import heatmap_gen
+    try:
+        png = heatmap_gen.generate(site_id, year)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+    return Response(content=png, media_type="image/png")
