@@ -1,11 +1,8 @@
-"""Phase 2 step 1b: high-throughput S2 chip fetcher via ee.data.computePixels.
+"""Phase 1 anchor S2 chip fetcher via ee.data.computePixels (high-volume EE endpoint).
 
-Bypasses the batch task queue entirely. Reads s2_chip_manifest.parquet, finds
-(site_id, year) pairs not yet COMPLETED, fetches chips synchronously from the
-EE high-volume endpoint, uploads to GCS, and updates the manifest at end.
-
-Use after phase2_pull_s2.py has populated the manifest with the site list and
-the in-queue batch tasks have stalled at the 3000-task quota.
+Reads s2_chip_manifest.parquet, finds (site_id, year) pairs not yet COMPLETED,
+fetches chips synchronously, uploads to GCS, and updates the manifest at end.
+The high-volume endpoint bypasses GEE's batch-export task queue entirely.
 """
 
 from __future__ import annotations
@@ -23,7 +20,7 @@ from dotenv import load_dotenv
 from google.cloud import storage
 from pyproj import Transformer
 
-load_dotenv(Path(__file__).parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 GCP_PROJECT = os.getenv("GCP_PROJECT", "")
 GCS_BUCKET = os.getenv("GCS_BUCKET", "")

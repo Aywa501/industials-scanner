@@ -22,9 +22,9 @@ COPY requirements-sam.txt /tmp/requirements-sam.txt
 RUN pip install --no-cache-dir torch==2.1.0 --index-url https://download.pytorch.org/whl/cu121 \
     && pip install --no-cache-dir -r /tmp/requirements-sam.txt
 
-COPY stage2_sam_inference.py /opt/sam/stage2_sam_inference.py
+COPY sam_inference.py /opt/sam/sam_inference.py
 
 ENV SAM_CHECKPOINT=/opt/sam/sam_vit_h_4b8939.pth \
     SAM_MODEL_TYPE=vit_h
 
-ENTRYPOINT ["python", "/opt/sam/stage2_sam_inference.py"]
+ENTRYPOINT ["python", "/opt/sam/sam_inference.py"]

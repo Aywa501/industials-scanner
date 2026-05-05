@@ -1,4 +1,4 @@
-"""Stage 2: SAM segmentation runner.
+"""Phase 3 step 6: SAM segmentation runner.
 
 Reads tiles from GCS, runs SAM AutomaticMaskGenerator, writes mask polygons as
 GeoJSON back to GCS, and records mask_uri / mask_status in the Parquet manifest.
@@ -7,9 +7,9 @@ Designed to run as a Cloud Run Job (with GPU) or a Vertex AI Custom Job. Pulls
 work from the manifest where export_status='COMPLETED' and mask_uri IS NULL.
 
 Usage:
-    python stage2_sam_inference.py                                # batch all pending
-    python stage2_sam_inference.py --tile-uri gs://.../foo.tif    # single tile
-    python stage2_sam_inference.py --limit 10                     # batch first N
+    python phase3_refinement/sam_inference.py                                # batch all pending
+    python phase3_refinement/sam_inference.py --tile-uri gs://.../foo.tif    # single tile
+    python phase3_refinement/sam_inference.py --limit 10                     # batch first N
 """
 
 from __future__ import annotations

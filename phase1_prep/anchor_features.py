@@ -1,11 +1,14 @@
-"""Phase 2 prep v2: extended exclusionary-feature analysis at the 316 anchors.
+"""Phase 1 prep: exclusionary-feature analysis at the 316 anchors.
 
-Adds to v1:
-- NLCD majority class within 3×3 / 5×5 / 7×7 windows (90/150/210 m radius)
+For each anchor we sample (via GEE):
+- NLCD 2019 land-cover class (point + 3×3 / 5×5 / 7×7 majority neighborhoods)
+- Slope in degrees (USGS 3DEP 10 m)
+- Elevation in meters
 - Distance to nearest TIGER primary+secondary road (m)
 - Distance to nearest NLCD developed pixel (m)
 
-Reports per-anchor distributions and proposes thresholds that drop ~0 anchors.
+Reports per-anchor distributions and proposes thresholds that drop ~0 anchors,
+informing the Phase 2 exclusion-mask heuristic.
 """
 
 from __future__ import annotations
@@ -19,11 +22,11 @@ import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 GCP_PROJECT = os.getenv("GCP_PROJECT", "")
-ANCHORS_CSV = Path(__file__).parent.parent / "data_us" / "manufacturing_announcements_geocoded.csv"
-OUT_PARQUET = Path(__file__).parent / ".artifacts" / "anchor_features_v2.parquet"
+ANCHORS_CSV = Path(__file__).parent.parent.parent / "data_us" / "manufacturing_announcements_geocoded.csv"
+OUT_PARQUET = Path(__file__).parent.parent / ".artifacts" / "anchor_features.parquet"
 
 NLCD_CLASS_NAMES = {
     11: "open_water", 12: "ice_snow",

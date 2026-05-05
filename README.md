@@ -19,8 +19,8 @@ Produced `data_us/manufacturing_announcements_geocoded.csv`: 316 geocoded manufa
 ### Phase 1 — Anchor imagery + feature prep (complete)
 
 - **NAIP archive** of the 316 anchor sites: 2242 GeoTIFFs at `gs://{bucket}/tiles/{site_id}/{year}_{image_id}.tif`, manifest at `gs://{bucket}/manifest/tile_manifest.parquet`. Used as a labeled validation set for the eventual NAIP-stage classifiers.
-- **Sentinel-2 anchor chips**: yearly summer (Jun–Aug) median composites, B4/B3/B2/B8 at 10 m, 256×256 px (1.28 km buffer), for 316 anchors + ~500 random CONUS sites × 9 years (2017–2025). Manifest at `gs://{bucket}/manifest/s2_chip_manifest.parquet`. Pulled via `phase2_pull_s2_fast.py` against GEE's high-volume endpoint (`ee.data.computePixels`).
-- **Anchor feature analysis** (`phase2_anchor_features.py`): NLCD land-cover class, slope, and elevation sampled at each anchor. Empirical findings inform the Phase 2 heuristic.
+- **Sentinel-2 anchor chips**: yearly summer (Jun–Aug) median composites, B4/B3/B2/B8 at 10 m, 256×256 px (1.28 km buffer), for 316 anchors + ~500 random CONUS sites × 9 years (2017–2025). Manifest at `gs://{bucket}/manifest/s2_chip_manifest.parquet`. Pulled via `phase1_prep/pull_s2.py` against GEE's high-volume endpoint (`ee.data.computePixels`).
+- **Anchor feature analysis** (`phase1_prep/anchor_features.py`): NLCD land-cover class, slope, elevation, distance to road, distance to nearest developed pixel — sampled at each anchor. Empirical findings inform the Phase 2 heuristic.
 
 ### Phase 2 — Exclusion heuristic + lifecycle classifier (current)
 
@@ -60,7 +60,7 @@ Linear pipeline. No iterative loop.
 3. **Spatial cluster** — group adjacent positives into site-level candidates.
 4. **Per-candidate timeline reconstruction** — for each candidate location, run the lifecycle classifier on each historical year (2017→2024). The transition `not_a_site → partial → complete` dates the construction. Output: per-site timeline.
 5. **NAIP epoch selection** — using the timeline, pick the NAIP survey covering the post-completion period for each site.
-6. **NAIP refinement + site-type classification** — fetch the selected NAIP, run SAM for building polygons, run a downstream classifier (industrial vs not) on segmented polygons. (Builds on `stage1_pull_tiles.py` / `stage2_sam_inference.py` / `stage2_diff_masks.py`.)
+6. **NAIP refinement + site-type classification** — fetch the selected NAIP, run SAM for building polygons, run a downstream classifier (industrial vs not) on segmented polygons. (Builds on `phase3_refinement/pull_naip.py` / `sam_inference.py` / `mask_diff.py`.)
 7. **Agent verification** — `prototypes/orchestrator/` dispatches per-candidate worker agents that search news, identify operator/project/sector, and build a multi-source timeline. Output: structured site record + NAICS tag.
 8. **Aggregate** — verified records into the canonical BigQuery site table.
 
@@ -122,18 +122,18 @@ Copy `.env.example` to `.env` and fill in `GCP_PROJECT`, `GCS_BUCKET`, and (if n
 pip install -r requirements.txt
 
 # Phase 1 — already complete; included for reproducibility
-python phase2_pull_s2_fast.py --workers 50         # S2 anchor + negative chips via high-vol endpoint
-python phase2_anchor_features.py                    # NLCD / slope / elevation per anchor
+python phase1_prep/pull_s2.py --workers 50           # S2 anchor + negative chips via high-vol endpoint
+python phase1_prep/anchor_features.py                # NLCD / slope / road dist / dev dist per anchor
 
 # Phase 2 — heuristic + lifecycle classifier (in progress)
-# (heuristic definition + classifier training scripts to be added)
+# (heuristic mask builder + classifier training scripts to be added under phase2_*/)
 
 # Phase 3 step 6 tooling — NAIP + SAM (existing pipeline, slots in late-stage)
-python stage1_pull_tiles.py --dry-run               # NAIP fetch for a site list
-python stage1_pull_tiles.py --poll-wait 60          # schedule + poll-loop
-docker build -f Dockerfile.sam -t REGION-docker.pkg.dev/PROJECT/sam:latest .
-python stage2_sam_inference.py                      # batch SAM over manifest
-python stage2_diff_masks.py                         # mask processing → BigQuery
+python phase3_refinement/pull_naip.py --dry-run      # NAIP fetch for a site list
+python phase3_refinement/pull_naip.py --poll-wait 60 # schedule + poll-loop
+cd phase3_refinement && docker build -f Dockerfile.sam -t REGION-docker.pkg.dev/PROJECT/sam:latest .
+python phase3_refinement/sam_inference.py            # batch SAM over manifest
+python phase3_refinement/mask_diff.py                # mask processing → BigQuery
 ```
 
 Manifests in GCS are the source of truth — re-runs only process work not yet recorded there.

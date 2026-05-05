@@ -1,4 +1,4 @@
-"""Stage 2 follow-on: diff before/after mask pairs and emit candidate deltas.
+"""Phase 3 step 6: diff before/after mask pairs and emit candidate deltas.
 
 For each project_id with masks bracketing announcement_date:
   1. Pick the latest pre-announcement mask as "before" and latest post-announcement
@@ -13,8 +13,8 @@ Outputs:
   - BigQuery:    {project}.{dataset}.candidate_deltas (one row per delta polygon)
 
 Usage:
-    python stage2_diff_masks.py
-    python stage2_diff_masks.py --project-id <pid>     # single-project mode
+    python phase3_refinement/mask_diff.py
+    python phase3_refinement/mask_diff.py --project-id <pid>     # single-project mode
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ from shapely.strtree import STRtree
 from pyproj import Transformer
 from google.cloud import bigquery, storage
 
-load_dotenv(Path(__file__).parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 GCP_PROJECT = os.getenv("GCP_PROJECT", "")
 GCS_BUCKET = os.getenv("GCS_BUCKET", "")

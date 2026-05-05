@@ -1,4 +1,4 @@
-"""Stage 1: NAIP tile puller.
+"""Phase 3 step 6: NAIP tile puller.
 
 Reads the geocoded manufacturing CSV, builds a per-site AOI, queries NAIP imagery
 on Earth Engine, kicks off exports to GCS, and maintains a Parquet manifest in GCS.
@@ -7,9 +7,9 @@ The manifest is the source of truth: re-runs schedule only missing exports and
 refresh statuses for in-flight tasks.
 
 Usage:
-    python stage1_pull_tiles.py             # schedule new exports + poll once
-    python stage1_pull_tiles.py --resume    # poll only; do not schedule
-    python stage1_pull_tiles.py --dry-run   # print plan; do not call EE
+    python phase3_refinement/pull_naip.py             # schedule new exports + poll once
+    python phase3_refinement/pull_naip.py --resume    # poll only; do not schedule
+    python phase3_refinement/pull_naip.py --dry-run   # print plan; do not call EE
 """
 
 from __future__ import annotations
@@ -26,13 +26,13 @@ import ee
 import pandas as pd
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 GCP_PROJECT = os.getenv("GCP_PROJECT", "")
 GCS_BUCKET = os.getenv("GCS_BUCKET", "")
 INPUT_CSV = os.getenv(
     "INPUT_CSV",
-    str(Path(__file__).parent.parent / "data_us" / "manufacturing_announcements_geocoded.csv"),
+    str(Path(__file__).parent.parent.parent / "data_us" / "manufacturing_announcements_geocoded.csv"),
 )
 AOI_BUFFER_M = int(os.getenv("AOI_BUFFER_M", "307"))
 TILE_SIZE_PX = int(os.getenv("TILE_SIZE_PX", "1024"))
