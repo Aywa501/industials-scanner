@@ -1,5 +1,6 @@
 # Secrets
 .env
+.env.*
 
 # Local caches and pipeline artifacts
 .cache/
