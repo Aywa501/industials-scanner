@@ -29,6 +29,7 @@ import argparse
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import NamedTuple
 
@@ -43,6 +44,7 @@ import torch.nn.functional as F
 from dotenv import load_dotenv
 from PIL import Image
 from rasterio.session import AWSSession
+from rasterio.transform import rowcol
 from rasterio.windows import Window, from_bounds
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,6 +68,27 @@ MIN_VALID_PIXELS = 256        # per-scene gate; chips below this are skipped
 MIN_VALID_SCENES = 1          # tile is skipped if 0 scenes survive masking
 
 BATCH_SIZE = 32
+
+# Parallel range reads. Each rasterio dataset reader is single-threaded, but
+# we open one reader per (scene, band) so the 32 (= 8 scenes × 4 bands) reads
+# for a single tile can fan out across threads. ~10× speedup vs serial reads.
+IO_WORKERS = 32
+
+# Memory budget for the bulk-loaded scene arrays. On g6.2xlarge (32 GB host),
+# 20 GB for arrays + ~5 GB model + Python/working still leaves comfortable
+# headroom. Full 110×110 km × 8 scenes is ~7.7 GB, so this is single-chunk
+# for any realistic shard.
+MEMORY_BUDGET_BYTES = 20 * 1024**3
+
+# Tile-prep workers. After bulk-loading scene arrays the per-tile work is
+# numpy/PIL ops that release the GIL — running multiple tiles in parallel
+# threads gives near-linear speedup up to vCPU count.
+PREP_WORKERS = 8
+PREP_CHUNK = 256  # tiles per prep chunk; bounds memory of pending-future pile
+
+# Cap scenes per shard. 8 cleanest by cloud cover is plenty for a median
+# composite; more scenes scale memory cost without much marginal quality.
+MAX_SCENES_PER_SHARD = 8
 
 # CLS embeddings are saved for tiles above this prob, so we can train a
 # nonlinear refiner downstream without re-running the ViT pass.
@@ -122,6 +145,26 @@ def _utm_epsg(mgrs_tile: str) -> int:
     return 32600 + zone
 
 
+def _plan_chunks(utm_xy: np.ndarray, n_scenes: int) -> list[np.ndarray]:
+    """Split tile indices into spatial chunks whose bulk-load fits memory.
+
+    Estimates the per-chunk array footprint as
+        (W_px × H_px × n_scenes × 4 bands × 2 bytes)
+    and picks the smallest N that brings it under MEMORY_BUDGET_BYTES.
+    Tiles are sorted by UTM-Y and split into N roughly-equal latitude bands."""
+    n = len(utm_xy)
+    if n == 0:
+        return []
+    w_px = (utm_xy[:, 0].max() - utm_xy[:, 0].min()) / GSD_M + IMG_NATIVE
+    h_px = (utm_xy[:, 1].max() - utm_xy[:, 1].min()) / GSD_M + IMG_NATIVE
+    bytes_est = w_px * h_px * n_scenes * 4 * 2
+    n_chunks = max(1, int(np.ceil(bytes_est / MEMORY_BUDGET_BYTES)))
+    if n_chunks == 1:
+        return [np.arange(n)]
+    sorted_idx = np.argsort(utm_xy[:, 1])
+    return np.array_split(sorted_idx, n_chunks)
+
+
 def _open_scene_readers(scene_rows: pd.DataFrame) -> list[SceneReaders]:
     out = []
     for _, r in scene_rows.iterrows():
@@ -147,29 +190,95 @@ def _close_scenes(scenes: list[SceneReaders]) -> None:
                 pass
 
 
-def _read_window(reader, utm_x: float, utm_y: float, size: int) -> np.ndarray | None:
-    win = from_bounds(
-        utm_x - HALF_M, utm_y - HALF_M, utm_x + HALF_M, utm_y + HALF_M,
-        transform=reader.transform,
+def _bulk_read(reader, xmin: float, ymin: float, xmax: float, ymax: float,
+               out_shape: tuple[int, int] | None = None):
+    """Read the rectangular UTM bbox once, return (array, transform) or (None, None).
+    Clips the window to the reader's valid extent. If `out_shape` is given, the
+    band is resampled (nearest) to that shape — used to bring 20m SCL onto the
+    10m B04 grid so we can slice them with the same row/col."""
+    win = from_bounds(xmin, ymin, xmax, ymax, transform=reader.transform)
+    col = max(0, int(round(win.col_off)))
+    row = max(0, int(round(win.row_off)))
+    col_end = min(reader.width, int(round(win.col_off + win.width)))
+    row_end = min(reader.height, int(round(win.row_off + win.height)))
+    if col >= col_end or row >= row_end:
+        return None, None
+    actual = Window(col, row, col_end - col, row_end - row)
+    native_tr = reader.window_transform(actual)
+    if out_shape is None:
+        arr = reader.read(1, window=actual)
+        return arr, native_tr
+    # Resampled read — collapse the actual window into out_shape px nearest.
+    arr = reader.read(
+        1, window=actual, out_shape=out_shape,
+        resampling=rasterio.enums.Resampling.nearest,
     )
-    col = int(round(win.col_off))
-    row = int(round(win.row_off))
-    if col < 0 or row < 0 or col + size > reader.width or row + size > reader.height:
-        return None
-    return reader.read(1, window=Window(col, row, size, size))
+    scale_x = (col_end - col) / out_shape[1]
+    scale_y = (row_end - row) / out_shape[0]
+    out_tr = native_tr * native_tr.scale(scale_x, scale_y)
+    return arr, out_tr
 
 
-def _build_composite(scenes: list[SceneReaders], utm_x: float, utm_y: float
-                     ) -> np.ndarray | None:
-    """Returns (3, IMG_NATIVE, IMG_NATIVE) float32 median composite, or None."""
-    chips: list[np.ndarray] = []
+def _load_shard_arrays(scenes: list[SceneReaders], executor: ThreadPoolExecutor,
+                       bbox: tuple[float, float, float, float]) -> list[dict | None]:
+    """Bulk-read every (scene × band) into memory once for the shard.
+    Returns one dict per scene with keys b04/b03/b02/scl/transform, or None
+    for scenes that don't intersect the bbox.
+    SCL (20m) is resampled onto the B04 (10m) grid so all four slice identically."""
+    xmin, ymin, xmax, ymax = bbox
+    # First pass: B04/B03/B02 at native 10m.
+    rgb_readers = []
     for s in scenes:
-        b04 = _read_window(s.b04, utm_x, utm_y, IMG_NATIVE)
-        b03 = _read_window(s.b03, utm_x, utm_y, IMG_NATIVE)
-        b02 = _read_window(s.b02, utm_x, utm_y, IMG_NATIVE)
-        scl = _read_window(s.scl, utm_x, utm_y, IMG_NATIVE)
+        rgb_readers.extend([s.b04, s.b03, s.b02])
+    rgb_futures = [executor.submit(_bulk_read, r, xmin, ymin, xmax, ymax)
+                   for r in rgb_readers]
+    rgb_results = [f.result() for f in rgb_futures]
+
+    # Second pass: SCL resampled onto the per-scene B04 shape.
+    scl_futures = []
+    for i, s in enumerate(scenes):
+        b04 = rgb_results[3 * i + 0][0]
+        if b04 is None:
+            scl_futures.append(None)
+        else:
+            scl_futures.append(executor.submit(
+                _bulk_read, s.scl, xmin, ymin, xmax, ymax, out_shape=b04.shape,
+            ))
+    scl_results = [f.result() if f is not None else (None, None) for f in scl_futures]
+
+    out: list[dict | None] = []
+    for i in range(len(scenes)):
+        b04, t = rgb_results[3 * i + 0]
+        b03, _ = rgb_results[3 * i + 1]
+        b02, _ = rgb_results[3 * i + 2]
+        scl, _ = scl_results[i]
         if any(x is None for x in (b04, b03, b02, scl)):
+            out.append(None)
+        else:
+            out.append({"b04": b04, "b03": b03, "b02": b02, "scl": scl, "transform": t})
+    return out
+
+
+def _build_composite_from_arrays(scene_data: list[dict | None],
+                                  utm_x: float, utm_y: float
+                                  ) -> np.ndarray | None:
+    """Slice 256×256 chips out of the in-memory bulk reads and median-composite.
+    Returns (3, IMG_NATIVE, IMG_NATIVE) float32, or None."""
+    chips: list[np.ndarray] = []
+    for s in scene_data:
+        if s is None:
             continue
+        # Upper-left UTM corner → (row, col) in the loaded array
+        row, col = rowcol(s["transform"], utm_x - HALF_M, utm_y + HALF_M)
+        row = int(row)
+        col = int(col)
+        H, W = s["b04"].shape
+        if row < 0 or col < 0 or row + IMG_NATIVE > H or col + IMG_NATIVE > W:
+            continue
+        b04 = s["b04"][row:row + IMG_NATIVE, col:col + IMG_NATIVE]
+        b03 = s["b03"][row:row + IMG_NATIVE, col:col + IMG_NATIVE]
+        b02 = s["b02"][row:row + IMG_NATIVE, col:col + IMG_NATIVE]
+        scl = s["scl"][row:row + IMG_NATIVE, col:col + IMG_NATIVE]
         ok = ~np.isin(scl, SCL_BAD)
         if ok.sum() < MIN_VALID_PIXELS:
             continue
@@ -180,14 +289,14 @@ def _build_composite(scenes: list[SceneReaders], utm_x: float, utm_y: float
     if len(chips) < MIN_VALID_SCENES:
         return None
 
-    stacked = np.stack(chips, axis=0)              # (N, 3, H, W)
+    stacked = np.stack(chips, axis=0)
     with np.errstate(all="ignore"):
-        composite = np.nanmedian(stacked, axis=0)  # (3, H, W)
+        composite = np.nanmedian(stacked, axis=0)
     for c in range(3):
-        col = composite[c]
-        nans = np.isnan(col)
+        col_arr = composite[c]
+        nans = np.isnan(col_arr)
         if nans.any():
-            fill = np.nanmedian(col) if not np.isnan(col).all() else 0.0
+            fill = np.nanmedian(col_arr) if not np.isnan(col_arr).all() else 0.0
             composite[c, nans] = fill
     return composite
 
@@ -220,6 +329,12 @@ def process_shard(mgrs_tile: str, model, head, device: torch.device) -> Path:
     if scenes_df.empty:
         print(f"[infer] {mgrs_tile}: no scenes, skipping")
         return None
+    # Cap scenes per shard. The find_s2_scenes fallback pass can produce up
+    # to ~16 scenes per remapped MGRS tile, which blows past 16 GB RAM at
+    # full 110×110 km bbox. Take the 8 cleanest by cloud cover.
+    if len(scenes_df) > MAX_SCENES_PER_SHARD:
+        scenes_df = (scenes_df.sort_values("cloud_cover")
+                     .head(MAX_SCENES_PER_SHARD).reset_index(drop=True))
 
     out_path = RESULTS_DIR / f"{mgrs_tile}.parquet"
     if out_path.exists():
@@ -240,11 +355,16 @@ def process_shard(mgrs_tile: str, model, head, device: torch.device) -> Path:
         print(f"[infer] {mgrs_tile}: failed to open any scene, skipping")
         return None
 
+    io_pool = ThreadPoolExecutor(max_workers=IO_WORKERS)
     t0 = time.time()
     results: list[tuple[str, float, float, float]] = []
     embeddings: list[tuple[str, np.ndarray]] = []
     batch_buf: list[torch.Tensor] = []
     batch_meta: list[tuple[str, float, float]] = []
+
+    # Holder so the inner closures see the current chunk's arrays after each
+    # spatial sub-chunk swap.
+    scene_data_holder: list[list[dict | None] | None] = [None]
 
     def flush():
         if not batch_buf:
@@ -265,27 +385,76 @@ def process_shard(mgrs_tile: str, model, head, device: torch.device) -> Path:
         batch_buf.clear()
         batch_meta.clear()
 
+    def _prep(ux: float, uy: float):
+        comp = _build_composite_from_arrays(scene_data_holder[0], ux, uy)
+        if comp is None:
+            return None
+        return _to_input(comp)
+
+    # Plan spatial sub-chunks so each bulk-load fits the memory budget.
+    chunks = _plan_chunks(utm_xy, len(scenes))
+    print(f"[infer]   {mgrs_tile}: split into {len(chunks)} sub-chunk(s) "
+          f"under {MEMORY_BUDGET_BYTES // 1024**3} GB budget")
+
+    prep_pool = ThreadPoolExecutor(max_workers=PREP_WORKERS)
     skipped = 0
+    n = len(grid)
+    tids = grid.tile_id.to_numpy()
+    lons = grid.lon.to_numpy()
+    lats = grid.lat.to_numpy()
+    processed = 0
     try:
-        for i, (tid, lon, lat, ux, uy) in enumerate(zip(
-            grid.tile_id.to_numpy(), grid.lon.to_numpy(), grid.lat.to_numpy(),
-            utm_xy[:, 0], utm_xy[:, 1],
-        )):
-            comp = _build_composite(scenes, float(ux), float(uy))
-            if comp is None:
-                skipped += 1
-                continue
-            batch_buf.append(_to_input(comp))
-            batch_meta.append((tid, float(lon), float(lat)))
-            if len(batch_buf) >= BATCH_SIZE:
-                flush()
-            if i and i % 1000 == 0:
-                rate = i / max(time.time() - t0, 1e-6)
-                eta = (len(grid) - i) / max(rate, 1e-6) / 60
-                print(f"[infer]   {mgrs_tile} {i}/{len(grid)} "
-                      f"({rate:.1f} tiles/s, ~{eta:.1f} min left, skipped={skipped})")
-        flush()
+      for chunk_i, indices in enumerate(chunks):
+        chunk_xy = utm_xy[indices]
+        bbox = (
+            float(chunk_xy[:, 0].min() - HALF_M),
+            float(chunk_xy[:, 1].min() - HALF_M),
+            float(chunk_xy[:, 0].max() + HALF_M),
+            float(chunk_xy[:, 1].max() + HALF_M),
+        )
+        bbox_w = (bbox[2] - bbox[0]) / 1000
+        bbox_h = (bbox[3] - bbox[1]) / 1000
+        load_t = time.time()
+        scene_data = _load_shard_arrays(scenes, io_pool, bbox)
+        n_loaded = sum(1 for s in scene_data if s is not None)
+        if n_loaded == 0:
+            print(f"[infer]   chunk {chunk_i+1}/{len(chunks)}: no scenes intersect, skipping")
+            continue
+        mem_mb = sum(s["b04"].nbytes + s["b03"].nbytes + s["b02"].nbytes + s["scl"].nbytes
+                     for s in scene_data if s is not None) / 1e6
+        print(f"[infer]   chunk {chunk_i+1}/{len(chunks)}: "
+              f"{bbox_w:.0f}×{bbox_h:.0f} km, {len(indices):,} tiles, "
+              f"loaded {n_loaded}/{len(scenes)} scenes in {time.time()-load_t:.1f}s ({mem_mb:.0f} MB)")
+        scene_data_holder[0] = scene_data
+        idx_list = list(indices)
+        for chunk_start in range(0, len(idx_list), PREP_CHUNK):
+            chunk_end = min(chunk_start + PREP_CHUNK, len(idx_list))
+            sub_idx = idx_list[chunk_start:chunk_end]
+            futs = [
+                (j, prep_pool.submit(_prep, float(utm_xy[j, 0]), float(utm_xy[j, 1])))
+                for j in sub_idx
+            ]
+            for j, fut in futs:
+                inp = fut.result()
+                if inp is None:
+                    skipped += 1
+                    continue
+                batch_buf.append(inp)
+                batch_meta.append((str(tids[j]), float(lons[j]), float(lats[j])))
+                if len(batch_buf) >= BATCH_SIZE:
+                    flush()
+            processed += len(sub_idx)
+            rate = processed / max(time.time() - t0, 1e-6)
+            eta = (n - processed) / max(rate, 1e-6) / 60
+            print(f"[infer]   {mgrs_tile} {processed}/{n} "
+                  f"({rate:.1f} tiles/s, ~{eta:.1f} min left, skipped={skipped})")
+        # Free chunk arrays before next chunk's bulk-load.
+        scene_data_holder[0] = None
+        del scene_data
+      flush()
     finally:
+        prep_pool.shutdown(wait=False)
+        io_pool.shutdown(wait=False)
         _close_scenes(scenes)
 
     out_df = pd.DataFrame(results, columns=["tile_id", "lon", "lat", "prob"])
@@ -308,16 +477,18 @@ def process_shard(mgrs_tile: str, model, head, device: torch.device) -> Path:
 
 
 def _setup_rasterio_env() -> rasterio.Env:
-    """Tune GDAL for COG range-reads from S3."""
+    """Tune GDAL for COG range-reads from S3.
+    Caches kept small — bulk reads only touch each block once per shard, so
+    larger caches just eat RAM that we need for the band arrays themselves."""
     return rasterio.Env(
         AWSSession(boto3.Session(), requester_pays=True),
         GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",
         GDAL_HTTP_MULTIPLEX="YES",
         GDAL_HTTP_VERSION="2",
         VSI_CACHE="TRUE",
-        VSI_CACHE_SIZE="200000000",
-        CPL_VSIL_CURL_CHUNK_SIZE="1048576",
-        CPL_VSIL_CURL_CACHE_SIZE="200000000",
+        VSI_CACHE_SIZE=200000000,           # 200 MB per dataset (process-wide)
+        CPL_VSIL_CURL_CHUNK_SIZE=1048576,
+        CPL_VSIL_CURL_CACHE_SIZE=200000000, # 200 MB total CURL cache
     )
 
 

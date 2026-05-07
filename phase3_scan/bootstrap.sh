@@ -86,7 +86,7 @@ trap 'kill $SYNC_PID 2>/dev/null || true' EXIT
 
 # Run the scan. The worker checkpoints per-MGRS, so safe to interrupt + resume.
 cd sites_us
-python -m phase3_scan.infer_shard --mgrs-list ../mgrs_todo.txt 2>&1 | tee ../scan.log
+python -u -m phase3_scan.infer_shard --mgrs-list ../mgrs_todo.txt 2>&1 | tee ../scan.log
 cd ..
 
 # Final sync to catch anything the bg loop hasn't picked up.
