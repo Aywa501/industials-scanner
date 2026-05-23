@@ -1,7 +1,7 @@
 """STAC-search Sentinel-2 L2A COGs for each MGRS tile in the CONUS grid.
 
 For every distinct MGRS tile in `phase3_grid.parquet`, query the Element84
-STAC catalog for 2025-06-01..2025-08-31 acquisitions and keep the N least
+STAC catalog for 2025-04-01..2025-10-31 acquisitions and keep the N least
 cloudy. We deliberately do NOT pre-filter on scene cloud cover — the worker
 medians pixel-wise across scenes and uses per-pixel SCL masks to drop cloudy
 pixels, so a 60%-cloud scene still contributes its 40% clear pixels.
@@ -28,6 +28,9 @@ Output:
 
 from __future__ import annotations
 
+import os
+import random
+import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -45,10 +48,11 @@ SCENES_PATH = DATA_US / "phase3_scenes.parquet"
 
 STAC_URL = "https://earth-search.aws.element84.com/v1"
 COLLECTION = "sentinel-2-l2a"
-DATE_RANGE = "2025-06-01/2025-08-31"
-SCENES_PER_TILE = 8
-N_WORKERS = 12
+DATE_RANGE = "2025-04-01/2025-10-31"
+SCENES_PER_TILE = 16
+N_WORKERS = int(os.environ.get("SCENES_WORKERS", "12"))
 FALLBACK_BBOX_HALF = 0.05  # ~5km half-width on lon/lat
+MAX_RETRIES = 5            # Element84 rate-limits with 403s; back off and retry
 
 
 def _https_to_s3(href: str) -> str:
@@ -87,19 +91,39 @@ def _scene_row(mgrs_tile: str, item) -> dict | None:
         return None
 
 
+def _retry(fn, label: str):
+    """Run fn() with exponential backoff. Element84 answers rate-limited
+    requests with 403s; a short backoff clears transient throttling. A hard
+    block still raises after MAX_RETRIES — the caller records it as failed and
+    a later resume run picks the tile back up."""
+    last = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            return fn()
+        except Exception as e:  # STAC client raises assorted exception types
+            last = e
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(min(2 ** attempt, 30) + random.random())
+    raise last
+
+
 def _query_one(client: Client, mgrs_tile: str) -> list[dict]:
     zone, band, sq = _split_mgrs(mgrs_tile)
-    search = client.search(
-        collections=[COLLECTION],
-        datetime=DATE_RANGE,
-        query={
-            "mgrs:utm_zone": {"eq": zone},
-            "mgrs:latitude_band": {"eq": band},
-            "mgrs:grid_square": {"eq": sq},
-        },
-        max_items=200,
-    )
-    items = list(search.items())
+
+    def _do():
+        search = client.search(
+            collections=[COLLECTION],
+            datetime=DATE_RANGE,
+            query={
+                "mgrs:utm_zone": {"eq": zone},
+                "mgrs:latitude_band": {"eq": band},
+                "mgrs:grid_square": {"eq": sq},
+            },
+            max_items=200,
+        )
+        return list(search.items())
+
+    items = _retry(_do, mgrs_tile)
     items.sort(key=lambda it: it.properties.get("eo:cloud_cover", 100))
     out = []
     for it in items[:SCENES_PER_TILE]:
@@ -114,13 +138,13 @@ def _fallback_bbox(client: Client, lon: float, lat: float
     """Bbox-search around (lon, lat) and return (dominant_real_tile, scene_rows)."""
     bbox = [lon - FALLBACK_BBOX_HALF, lat - FALLBACK_BBOX_HALF,
             lon + FALLBACK_BBOX_HALF, lat + FALLBACK_BBOX_HALF]
-    search = client.search(
-        collections=[COLLECTION],
-        datetime=DATE_RANGE,
-        bbox=bbox,
-        max_items=300,
+    items = _retry(
+        lambda: list(client.search(
+            collections=[COLLECTION], datetime=DATE_RANGE, bbox=bbox,
+            max_items=300,
+        ).items()),
+        f"fallback@{lon:.2f},{lat:.2f}",
     )
-    items = list(search.items())
     by_tile: dict[str, list] = defaultdict(list)
     for it in items:
         name = _true_mgrs_name(it)
@@ -198,53 +222,79 @@ def _fallback_pass(client: Client, grid: pd.DataFrame, empty_tiles: list[str]
     return rows, remap, still_empty
 
 
+def _write_index(*frames: pd.DataFrame) -> pd.DataFrame:
+    """Merge frames, dedup, and atomically overwrite SCENES_PATH (write-temp +
+    rename) so a kill mid-write can never corrupt the on-disk index."""
+    parts = [f for f in frames if f is not None and not f.empty]
+    df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+    if not df.empty:
+        df = df.drop_duplicates(subset=["mgrs_tile", "scene_id"]).reset_index(drop=True)
+    DATA_US.mkdir(parents=True, exist_ok=True)
+    tmp = SCENES_PATH.with_suffix(".parquet.tmp")
+    df.to_parquet(tmp, index=False)
+    tmp.replace(SCENES_PATH)
+    return df
+
+
 def main() -> None:
     grid = pd.read_parquet(GRID_PATH)
-    mgrs_tiles = sorted(grid.mgrs_tile.unique().tolist())
-    print(f"[scenes] primary pass over {len(mgrs_tiles)} MGRS tiles "
-          f"({DATE_RANGE}, top {SCENES_PER_TILE} by lowest cloud_cover)")
+    all_tiles = sorted(grid.mgrs_tile.unique().tolist())
 
+    # Resume: a rate-limited run still writes whatever it got, so re-running
+    # picks up only the tiles still missing — no lost progress, no redo.
+    existing = pd.DataFrame()
+    if SCENES_PATH.exists():
+        existing = pd.read_parquet(SCENES_PATH)
+        done = set(existing.mgrs_tile)
+        todo = [t for t in all_tiles if t not in done]
+        print(f"[scenes] resume: {len(done)}/{len(all_tiles)} tiles already in "
+              f"{SCENES_PATH.name}; {len(todo)} still to query")
+    else:
+        todo = all_tiles
+    if not todo:
+        print("[scenes] index already complete — nothing to query")
+        return
+
+    print(f"[scenes] primary pass over {len(todo)} MGRS tiles "
+          f"({DATE_RANGE}, top {SCENES_PER_TILE} by lowest cloud_cover, "
+          f"{N_WORKERS} workers)")
     client = Client.open(STAC_URL)
-    primary_rows, empty, failed = _primary_pass(client, mgrs_tiles)
+    primary_rows, empty, failed = _primary_pass(client, todo)
     print(f"[scenes] primary done: {len(primary_rows)} rows, "
           f"{len(empty)} empty, {len(failed)} failed")
 
-    fallback_rows: list[dict] = []
+    # Checkpoint after the primary pass so a rate-limit during fallback (or a
+    # kill) cannot lose the primary results.
+    df = _write_index(existing, pd.DataFrame(primary_rows))
+    print(f"[scenes] checkpoint: {df.mgrs_tile.nunique()} tiles on disk")
+
     remap: dict[str, str] = {}
-    still_empty: list[str] = []
     if empty:
         print(f"[scenes] fallback bbox pass over {len(empty)} empty tiles")
         fallback_rows, remap, still_empty = _fallback_pass(client, grid, empty)
         print(f"[scenes] fallback done: {len(fallback_rows)} rows, "
               f"{len(remap)} remapped, {len(still_empty)} still empty")
-
-    df = pd.DataFrame(primary_rows + fallback_rows)
-    df = df.drop_duplicates(subset=["mgrs_tile", "scene_id"]).reset_index(drop=True)
-    DATA_US.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(SCENES_PATH, index=False)
+        df = _write_index(df, pd.DataFrame(fallback_rows))
 
     if remap:
         grid["mgrs_tile"] = grid["mgrs_tile"].replace(remap)
         grid.to_parquet(GRID_PATH, index=False)
         print(f"[scenes] patched {len(remap)} tile names in {GRID_PATH}")
-        sample = list(remap.items())[:5]
-        for w, r in sample:
-            print(f"[scenes]   {w} → {r}")
 
-    print(f"\n[scenes] wrote {len(df):,} scene rows for "
-          f"{df.mgrs_tile.nunique()} MGRS tiles → {SCENES_PATH}")
-    print(f"[scenes] tiles with no scene after fallback: {len(still_empty)}")
-    if still_empty[:10]:
-        print(f"[scenes]   sample: {still_empty[:10]}")
-    if failed[:5]:
-        for t, e in failed[:5]:
-            print(f"[scenes]   primary failed: {t}: {e}")
-    print(f"[scenes] median scenes/tile: "
-          f"{int(df.groupby('mgrs_tile').size().median())}")
-    print(f"[scenes] cloud_cover quantiles: "
-          f"p25={df.cloud_cover.quantile(0.25):.1f} "
-          f"p50={df.cloud_cover.quantile(0.50):.1f} "
-          f"p75={df.cloud_cover.quantile(0.75):.1f}")
+    covered = df.mgrs_tile.nunique()
+    missing = len(all_tiles) - covered
+    print(f"\n[scenes] {len(df):,} scene rows for {covered}/{len(all_tiles)} "
+          f"MGRS tiles → {SCENES_PATH}")
+    if missing:
+        print(f"[scenes] {missing} tiles still missing (likely rate-limited). "
+              f"Wait for the limit to cool down and re-run — it resumes from here.")
+        if failed[:5]:
+            for t, e in failed[:5]:
+                print(f"[scenes]   failed: {t}: {e}")
+    else:
+        print(f"[scenes] complete. median scenes/tile: "
+              f"{int(df.groupby('mgrs_tile').size().median())} | "
+              f"cloud_cover p50={df.cloud_cover.quantile(0.50):.2f}")
 
 
 if __name__ == "__main__":

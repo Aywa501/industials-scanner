@@ -14,8 +14,8 @@ Pipeline:
   5. Per cluster: centroid, max_prob, mean_prob, n_tiles, area-bbox
 
 Usage:
-    python -m phase3_scan.aggregate
-    python -m phase3_scan.aggregate --min-prob 0.5 --eps-m 2500
+    python -m phase3_scan.v1.aggregate
+    python -m phase3_scan.v1.aggregate --min-prob 0.5 --eps-m 2500
 """
 
 from __future__ import annotations
@@ -28,17 +28,15 @@ import pandas as pd
 import pyproj
 from sklearn.cluster import DBSCAN
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 DATA_US = ROOT.parent / "data_us"
-RESULTS_DIR = DATA_US / "phase3_results"
-CANDIDATES_PATH = DATA_US / "phase3_candidates.parquet"
 
 
-def _load_all(min_prob: float) -> pd.DataFrame:
-    parts = sorted(p for p in RESULTS_DIR.glob("*.parquet")
+def _load_all(results_dir: Path, min_prob: float) -> pd.DataFrame:
+    parts = sorted(p for p in results_dir.glob("*.parquet")
                    if not p.stem.endswith("_emb"))
     if not parts:
-        raise SystemExit(f"no result parquets in {RESULTS_DIR}")
+        raise SystemExit(f"no result parquets in {results_dir}")
     print(f"[agg] reading {len(parts)} shard parquets")
     frames = []
     for p in parts:
@@ -99,22 +97,30 @@ def _summarize(df: pd.DataFrame) -> pd.DataFrame:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--min-prob", type=float, default=0.7)
+    ap.add_argument("--results-dir", type=str, default="phase3_results",
+                    help="subdirectory under data_us/ with per-MGRS result parquets")
+    ap.add_argument("--candidates-out", type=str, default="phase3_candidates.parquet",
+                    help="output filename under data_us/")
+    ap.add_argument("--min-prob", type=float, default=0.45,
+                    help="minimum probability threshold for candidate tiles (default: 0.45 for v2, 0.7 for v1)")
     ap.add_argument("--eps-m", type=float, default=2000.0)
     ap.add_argument("--min-samples", type=int, default=2)
     args = ap.parse_args()
 
-    df = _load_all(args.min_prob)
+    results_dir = DATA_US / args.results_dir
+    candidates_path = DATA_US / args.candidates_out
+
+    df = _load_all(results_dir, args.min_prob)
     df = _cluster(df, args.eps_m, args.min_samples)
     summary = _summarize(df)
 
-    CANDIDATES_PATH.parent.mkdir(parents=True, exist_ok=True)
-    summary.to_parquet(CANDIDATES_PATH, index=False)
+    candidates_path.parent.mkdir(parents=True, exist_ok=True)
+    summary.to_parquet(candidates_path, index=False)
 
     n_singletons = int((df.cluster < 0).sum())
     print(f"\n[agg] {len(summary):,} clusters from {len(df) - n_singletons:,} clustered tiles "
           f"({n_singletons:,} singletons dropped)")
-    print(f"[agg] wrote → {CANDIDATES_PATH}")
+    print(f"[agg] wrote → {candidates_path}")
     print("\n[agg] top 20 candidate sites:")
     cols = ["candidate_id", "max_prob", "n_tiles", "lat", "lon", "span_m", "maps_url"]
     print(summary[cols].head(20).to_string(index=False))

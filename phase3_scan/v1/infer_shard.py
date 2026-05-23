@@ -12,8 +12,8 @@ For each pixel tile in the shard:
   7. Append (tile_id, lon, lat, prob) to the shard's result parquet
 
 Usage:
-  python -m phase3_scan.infer_shard --mgrs 14TMQ
-  python -m phase3_scan.infer_shard --mgrs-list mgrs_todo.txt
+  python -m phase3_scan.v1.infer_shard --mgrs 14TMQ
+  python -m phase3_scan.v1.infer_shard --mgrs-list mgrs_todo.txt
 
 Reads:
   data_us/phase3_grid.parquet
@@ -47,7 +47,7 @@ from rasterio.session import AWSSession
 from rasterio.transform import rowcol
 from rasterio.windows import Window, from_bounds
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env")
 DATA_US = ROOT.parent / "data_us"
 GRID_PATH = DATA_US / "phase3_grid.parquet"

@@ -1,4 +1,4 @@
-# Phase 3 CONUS scan — EC2 launch
+# Phase 3 CONUS scan — EC2 launch (v1)
 
 Run the local steps first, then launch the box and follow the on-EC2 steps.
 
@@ -11,16 +11,15 @@ Prereqs (already done):
 ## 1. Local: push bundle to S3
 
 ```
-cd sites_us
-chmod +x phase3_scan/push_bundle.sh
-./phase3_scan/push_bundle.sh
+chmod +x sites_us/phase3_scan/v1/push_bundle.sh
+./sites_us/phase3_scan/v1/push_bundle.sh
 ```
 
 Uploads to `s3://industrials-scanner-us-west-2/scan-bundle/`:
 - `phase3_grid.parquet` (~60 MB)
 - `phase3_scenes.parquet` (~1 MB)
 - `stage1_industrial_v1.pt` (~10 KB — head only; the ViT is downloaded from HF on the box)
-- `bootstrap.sh`, `infer_shard.py`, `.env`
+- `bootstrap.sh`, `v1/infer_shard.py`, `.env`
 
 ## 2. Launch g6e.xlarge in us-west-2
 
@@ -71,7 +70,7 @@ When done:
 
 ```
 aws s3 sync s3://industrials-scanner-us-west-2/phase3_results/ data_us/phase3_results/
-python -m phase3_scan.aggregate
+python -m phase3_scan.v1.aggregate
 ```
 
 Outputs `data_us/phase3_candidates.parquet` — DBSCAN-clustered candidate sites ranked by `max_prob × log(n_tiles)`.

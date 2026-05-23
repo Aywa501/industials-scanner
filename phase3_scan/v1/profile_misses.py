@@ -8,7 +8,7 @@ manufacturing announcements CSV.
 from pathlib import Path
 import pandas as pd
 
-ROOT = Path(__file__).parents[2]
+ROOT = Path(__file__).parents[3]
 df = pd.read_csv(ROOT / "data_us" / "phase3_joint_coverage.csv")
 
 df["overture_found"] = df["nearest_overture_m"] <= 500

@@ -1,0 +1,261 @@
+:root {
+  --bg: #0e1117;
+  --fg: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --industrial: #3fb950;
+  --not_industrial: #f85149;
+  --unsure: #d29922;
+  --focus: #58a6ff;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 12px 16px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #21262d;
+}
+
+#header-main { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+
+#prog {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+#tile-id { font-size: 16px; font-weight: 600; font-family: ui-monospace, SFMono-Regular, monospace; }
+
+#prob-badge, #mgrs-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #21262d;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+#prob-badge.hi { background: #1f3d1f; color: #7fd07f; }
+#prob-badge.mid { background: #3d3320; color: #d4ae5c; }
+#prob-badge.lo { background: #2d2d2d; color: var(--muted); }
+
+#scene-date { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+#quality-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+#quality-badge.empty { background: #4d2828; color: #ffa198; }
+#quality-badge.cloudy { background: #3d3320; color: #d4ae5c; }
+#quality-badge.ok { display: none; }
+
+#flag-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #3d2040;
+  color: #d07fc9;
+}
+#flag-badge.hidden { display: none; }
+
+#coords, #gmaps {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+#coords:hover, #gmaps:hover { text-decoration: underline; }
+
+#counts {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#note-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+#note-input {
+  flex: 1;
+  background: #161b22;
+  color: var(--fg);
+  border: 1px solid #30363d;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 13px;
+}
+#note-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #1a2332;
+}
+
+#main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 16px;
+  min-height: 0;
+}
+
+#context-panel {
+  width: 280px;
+  max-width: 30%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--fg);
+}
+.ctx-section {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  padding: 8px 10px;
+  line-height: 1.4;
+}
+.ctx-section.empty { display: none; }
+.ctx-section .ctx-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+.ctx-section .ctx-name {
+  font-weight: 600;
+  color: var(--fg);
+  word-break: break-word;
+}
+.ctx-section .ctx-meta {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+.ctx-section.anchor { border-color: #3fb950; }
+.ctx-section.anchor .ctx-title { color: #7fd07f; }
+.ctx-section.industrial { border-color: #d29922; }
+.ctx-section.industrial .ctx-title { color: #d4ae5c; }
+
+.chip-wrap {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.chip-wrap { position: relative; }
+#chip {
+  display: block;
+  max-width: min(720px, 90vw);
+  max-height: min(720px, 80vh);
+  width: auto;
+  height: auto;
+  background: #1a1f25;
+  border: 3px solid transparent;
+  border-radius: 4px;
+  image-rendering: -webkit-optimize-contrast;
+}
+#chip-overlay {
+  position: absolute;
+  top: 3px; left: 3px; right: 3px; bottom: 3px;
+  width: calc(100% - 6px);
+  height: calc(100% - 6px);
+  pointer-events: none;
+  overflow: visible;
+}
+#chip-overlay.hidden { display: none; }
+#chip-overlay .pin {
+  pointer-events: auto;
+  cursor: help;
+}
+#chip-overlay .pin-center {
+  fill: #ffffff;
+  stroke: #000;
+  stroke-width: 0.003;
+}
+#chip-overlay .pin-anchor circle { fill: #3fb950; stroke: #0e1117; stroke-width: 0.004; }
+#chip-overlay .pin-industrial circle { fill: #d29922; stroke: #0e1117; stroke-width: 0.004; }
+#chip-overlay .pin-named circle { fill: #58a6ff; stroke: #0e1117; stroke-width: 0.004; }
+#chip-overlay .pin-label {
+  fill: #fff;
+  font-size: 0.020px;
+  paint-order: stroke;
+  stroke: #000;
+  stroke-width: 0.006;
+  font-family: -apple-system, system-ui, sans-serif;
+  font-weight: 600;
+}
+#chip.label-industrial { border-color: var(--industrial); }
+#chip.label-not_industrial { border-color: var(--not_industrial); }
+#chip.label-unsure { border-color: var(--unsure); }
+
+#chip-label-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(0,0,0,0.78);
+  letter-spacing: 0.5px;
+}
+#chip-label-badge.label-industrial { color: var(--industrial); }
+#chip-label-badge.label-not_industrial { color: var(--not_industrial); }
+#chip-label-badge.label-unsure { color: var(--unsure); }
+
+footer {
+  border-top: 1px solid #21262d;
+  padding-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+#legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 12px;
+}
+kbd {
+  display: inline-block;
+  background: #21262d;
+  color: var(--fg);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  border: 1px solid #30363d;
+  border-bottom-width: 2px;
+}
+#status { color: var(--muted); font-size: 12px; }

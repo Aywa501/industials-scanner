@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from sklearn.neighbors import BallTree
 
-ROOT = Path(__file__).parents[2]
+ROOT = Path(__file__).parents[3]
 
 ann = pd.read_csv(ROOT / "data_us" / "manufacturing_announcements_geocoded.csv")
 

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>v2 candidate labeler</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div id="header-main">
+        <span id="prog"></span>
+        <span id="tile-id"></span>
+        <span id="prob-badge"></span>
+        <span id="mgrs-badge"></span>
+        <span id="scene-date"></span>
+        <span id="quality-badge"></span>
+        <span id="flag-badge"></span>
+        <a id="coords" target="_blank" rel="noopener"></a>
+        <a id="gmaps" target="_blank" rel="noopener">Google Maps ↗</a>
+      </div>
+      <div id="counts"></div>
+    </header>
+
+    <div id="note-row">
+      <label for="note-input">note:</label>
+      <input id="note-input" type="text" placeholder="press n to focus">
+    </div>
+
+    <main id="main">
+      <div class="chip-wrap" id="chip-wrap">
+        <img id="chip" alt="candidate chip">
+        <svg id="chip-overlay" viewBox="0 0 1 1" preserveAspectRatio="none"></svg>
+        <div id="chip-label-badge"></div>
+      </div>
+      <aside id="context-panel">
+        <div class="ctx-section" id="ctx-anchor"></div>
+        <div class="ctx-section" id="ctx-industrial"></div>
+        <div class="ctx-section" id="ctx-named"></div>
+      </aside>
+    </main>
+
+    <footer>
+      <div id="legend">
+        <span><kbd>1</kbd> not_industrial</span>
+        <span><kbd>2</kbd> industrial</span>
+        <span><kbd>3</kbd> unsure</span>
+        <span><kbd>x</kbd> clear</span>
+        <span><kbd>→</kbd>/<kbd>Enter</kbd> next</span>
+        <span><kbd>←</kbd> prev</span>
+        <span><kbd>j</kbd> next unlabeled</span>
+        <span><kbd>[</kbd>/<kbd>]</kbd> prob bucket</span>
+        <span><kbd>z</kbd> wide view</span>
+        <span><kbd>p</kbd> toggle pins</span>
+        <span><kbd>f</kbd> follow-up</span>
+        <span><kbd>n</kbd> note</span>
+        <span><kbd>g</kbd> Maps</span>
+      </div>
+      <div id="status"></div>
+    </footer>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

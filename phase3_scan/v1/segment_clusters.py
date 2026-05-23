@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 from sklearn.cluster import DBSCAN
 
-ROOT = Path(__file__).parents[2]
+ROOT = Path(__file__).parents[3]
 CANDIDATES = ROOT / "data_us" / "phase3_candidates.parquet"
 SINGLETONS = ROOT / "data_us" / "phase3_singletons.parquet"
 OVERTURE = ROOT / "data_us" / "overture_industrial_conus.parquet"

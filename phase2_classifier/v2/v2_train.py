@@ -1,4 +1,7 @@
-"""End-to-end v2.1 detector training on g6.2xlarge — multi-model comparison.
+"""End-to-end v2 detector training on a GPU spot box — multi-model comparison.
+
+Tested on g6.2xlarge (L4) and g4dn.2xlarge (T4). Bandwidth-bound, so the
+cheaper T4 box matches L4 wall-clock — see launch_v2.md for instance picking.
 
 Reads `data_us/v2_dataset_manifest.parquet` and produces, for each model M in
 the registry:
@@ -86,7 +89,7 @@ IO_WORKERS = 96           # bumped from 32 — py-spy showed only ~6-8 of 32 io 
 PREP_WORKERS = 8          # parallel per-tile composite + prep (GIL-released numpy/PIL)
 PREP_CHUNK = 256          # bound pending-futures pile in the prep_pool
 PREFETCH_GROUPS = 2       # (mgrs_tile, year) groups to fetch ahead in parallel; lifts S3 connection count
-MEMORY_BUDGET_BYTES = 8 * 1024**3    # per-sub-chunk bulk-read budget (lower than v1's 20 GB because prefetch may overlap two groups, and we want headroom under the box's 30 GB total)
+MEMORY_BUDGET_BYTES = 16 * 1024**3   # per-sub-chunk bulk-read budget. Only ONE sub_chunk is loaded at a time across the whole process (prefetch only opens lightweight scene readers, doesn't preload arrays). Peak host RAM ≈ this + ~5 GB Python/PyTorch overhead. 16 GB on a 32 GB box leaves comfortable headroom; v1 used 20 GB.
 CLUSTER_EPS_M = 5000.0
 
 # 6 S2 bands fetched (HLS-style, matches Prithvi expectations).

@@ -27,16 +27,21 @@ Pushes to `s3://industrials-scanner-us-west-2/v2-bundle/`:
 - `requirements_v2.txt`
 - `.env`
 
-## 2. Launch g6.2xlarge spot in us-west-2
+## 2. Launch g4dn.2xlarge spot in us-west-2
 
-g6.2xlarge (8 vCPU / 32 GB / L4 24 GB) is the right size for a single-process
-run. Bandwidth (S2 reads from S3) is the bottleneck, not GPU — going larger
-doesn't speed it up.
+**Required: `g4dn.2xlarge`** (8 vCPU / 32 GB / T4 16 GB). `bootstrap_v2.sh`
+checks the instance type via IMDSv2 at startup and aborts on anything else.
+
+The run is bandwidth-bound (S2 reads from S3), not GPU-bound — confirmed
+during the prior v2 round on g6.2xlarge. T4 has ~half the fp16 throughput of
+L4 but matches on RAM/vCPU/network, so wall-clock is the same at ~30% lower
+spot cost. 5-encoder weights (~2.6 GB GPU) + per-batch activations easily
+fit in T4's 16 GB VRAM.
 
 ```
 aws ec2 run-instances \
   --region us-west-2 \
-  --instance-type g6.2xlarge \
+  --instance-type g4dn.2xlarge \
   --instance-market-options 'MarketType=spot' \
   --image-id <DLAMI_AMI_ID> \
   --key-name "$AWS_EC2_KEY_NAME" \
@@ -47,7 +52,18 @@ aws ec2 run-instances \
   --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=v2-probe-training}]'
 ```
 
-Fallback: `g5.2xlarge` if g6 spot is tight.
+**If g4dn.2xlarge spot is unavailable**, fall back to `g5.2xlarge` or
+`g6.2xlarge` (both 32 GB RAM, no code changes) and override the bootstrap
+guard:
+
+```
+ALLOW_INSTANCE_TYPE=g5.2xlarge bash bootstrap_v2.sh
+# or g6.2xlarge
+```
+
+**Never use `g4dn.xlarge`** — only 16 GB RAM, would OOM with the current
+`MEMORY_BUDGET_BYTES=16 GB` setting in v2_train.py. The bootstrap guard
+explicitly blocks this even with override (would need code changes too).
 
 **Do not shard.** A previous attempt with 4 shards on g6.2xlarge OOM'd
 (per-worker RSS 5.5–9.2 GB) and split the GPU. The single-process design
