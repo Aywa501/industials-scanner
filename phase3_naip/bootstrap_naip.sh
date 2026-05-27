@@ -80,13 +80,24 @@ fi
 # Sanity check: CUDA, rasterio, transformers version pin, SAM 3 import.
 # Failing here is preferred to failing 30 min into a run.
 python - <<'PY'
-import torch, rasterio, transformers
+import sys, torch, rasterio, transformers
 print("CUDA:", torch.cuda.is_available(),
       torch.cuda.get_device_name(0) if torch.cuda.is_available() else "")
 print("rasterio:", rasterio.__version__)
 print("transformers:", transformers.__version__)
 from transformers import Sam3Model, Sam3Processor
 print("SAM 3 classes resolvable: Sam3Model, Sam3Processor")
+# Real-GPU kernel check. torch.cuda.is_available() is True even when the device's
+# compute capability isn't supported by the installed PyTorch (e.g. sm_120 Blackwell
+# on PT 2.6 which tops out at sm_90). A trivial matmul forces kernel dispatch and
+# fails fast if the GPU is unusable.
+try:
+    a = torch.randn(64, 64, device="cuda")
+    b = (a @ a).sum().item()
+    print(f"GPU matmul OK ({b:.2f})")
+except Exception as e:
+    print(f"GPU matmul FAILED: {type(e).__name__}: {e}", file=sys.stderr)
+    sys.exit(1)
 PY
 
 # IMDSv2 for instance metadata (needed for terminate-instances at end + log key)

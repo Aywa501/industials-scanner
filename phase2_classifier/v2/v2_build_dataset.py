@@ -1,6 +1,6 @@
 """Build the v2 detector training manifest (binary: industrial vs not).
 
-Produces data_us/v2_dataset_manifest.parquet with one row per (location, year)
+Produces data_us/phase2/v2_dataset_manifest.parquet with one row per (location, year)
 tile to be embedded.
 
 Composition (3 sources):
@@ -58,10 +58,10 @@ from sklearn.neighbors import BallTree
 ROOT = Path(__file__).resolve().parents[3]
 DATA_US = ROOT / "data_us"
 
-MANUAL_LABELS = DATA_US / "manual_labels.parquet"
-STAGE1_DATASET = DATA_US / "stage1_dataset.parquet"
-OVERTURE = DATA_US / "overture_industrial_conus_2025_aligned.parquet"
-OUT = DATA_US / "v2_dataset_manifest.parquet"
+MANUAL_LABELS = DATA_US / "labels" / "manual_labels.parquet"
+STAGE1_DATASET = DATA_US / "phase1" / "stage1_dataset.parquet"
+OVERTURE = DATA_US / "external" / "overture_industrial_conus_2025_aligned.parquet"
+OUT = DATA_US / "phase2" / "v2_dataset_manifest.parquet"
 
 # OSM-tagged industrial classes (positives).
 OSM_INDUSTRIAL_CLASSES = {"industrial", "warehouse", "hangar"}

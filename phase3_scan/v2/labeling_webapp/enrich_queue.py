@@ -21,8 +21,8 @@ ROOT = Path(__file__).resolve().parents[3]
 ARTIFACTS = ROOT / ".artifacts" / "labeling_v2"
 QUEUE_PATH = ARTIFACTS / "queue.json"
 DATA_US = ROOT.parent / "data_us"
-OVERTURE_PATH = DATA_US / "overture_industrial_conus_2025_aligned.parquet"
-ANCHORS_CSV = DATA_US / "manufacturing_announcements_geocoded.csv"
+OVERTURE_PATH = DATA_US / "external" / "overture_industrial_conus_2025_aligned.parquet"
+ANCHORS_CSV = DATA_US / "labels" / "manufacturing_announcements_geocoded.csv"
 
 EARTH_M = 6_371_000.0
 INDUSTRIAL_CLASSES = {

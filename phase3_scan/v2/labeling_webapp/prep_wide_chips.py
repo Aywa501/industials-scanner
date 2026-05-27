@@ -26,7 +26,7 @@ QUEUE_PATH = ARTIFACTS / "queue.json"
 WIDE_DIR = ARTIFACTS / "chips_wide"
 
 DATA_US = ROOT.parent / "data_us"
-SCENES_PATH = DATA_US / "phase3_scenes.parquet"
+SCENES_PATH = DATA_US / "phase3_scan" / "phase3_scenes.parquet"
 
 IMG_NATIVE = 512        # 2x the regular chip → 5120 m on a side
 GSD_M = 10.0

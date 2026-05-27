@@ -3,7 +3,7 @@
 Pipeline:
   1. Build a scenes index for test_neg_v2_manifest (mirrors v2_build_scenes_index.py).
   2. Run v2_train.fetch_and_embed on the new manifest with redirected output paths
-     (data_us/test_neg_v2/ instead of data_us/v2/).
+     (data_us/phase2/test_neg_v2/ instead of data_us/phase2/v2/).
   3. Apply the existing 5 saved probes and compute thresholds capturing
      95 / 99 / 100 % of strict-complete hand-labeled positives, with FPR
      measured on these in-distribution negatives.
@@ -44,14 +44,14 @@ import torch.nn.functional as F
 ROOT = Path(__file__).resolve().parents[3]
 DATA_US = ROOT / "data_us"
 
-TEST_NEG_MANIFEST = DATA_US / "test_neg_v2_manifest.parquet"
-TEST_NEG_SCENES   = DATA_US / "test_neg_v2_scenes_index.parquet"
-TEST_NEG_DIR      = DATA_US / "test_neg_v2"
+TEST_NEG_MANIFEST = DATA_US / "phase2" / "test_neg_v2_manifest.parquet"
+TEST_NEG_SCENES   = DATA_US / "phase2" / "test_neg_v2_scenes_index.parquet"
+TEST_NEG_DIR      = DATA_US / "phase2" / "test_neg_v2"
 TEST_NEG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Probes + prior-run embeddings (used to look up strict positives).
 # Defaults match the local-Mac /tmp layout from the earlier 2-encoder run;
-# the EC2 bootstrap overrides via env vars to point at data_us/v2/ where it
+# the EC2 bootstrap overrides via env vars to point at data_us/phase2/v2/ where it
 # pulls v2-artifacts.
 LOCAL_PROBES_DIR   = Path(_os.environ.get("TEST_NEG_PROBES_DIR",
                                           "/tmp/v2-results/probes"))

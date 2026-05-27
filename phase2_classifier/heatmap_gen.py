@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
 
 DATA_US = ROOT.parent / "data_us"
-MODEL_PATH = DATA_US / "stage1_industrial_v1.pt"
+MODEL_PATH = DATA_US / "phase1" / "stage1_industrial_v1.pt"
 ARTIFACTS = ROOT / ".artifacts" / "labeling"
 CHIPS_DIR = ARTIFACTS / "chips"
 HEATMAP_CACHE_DIR = ARTIFACTS / "heatmaps"

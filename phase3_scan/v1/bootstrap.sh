@@ -59,12 +59,12 @@ print("rasterio:", rasterio.__version__)
 PY
 
 # Build work list = MGRS tiles with scenes but no result yet.
-mkdir -p data_us/phase3_results
+mkdir -p data_us/phase3_scan/results
 python - <<'PY'
 from pathlib import Path
 import pandas as pd
-scenes = pd.read_parquet("data_us/phase3_scenes.parquet")
-done = {p.stem for p in Path("data_us/phase3_results").glob("*.parquet")
+scenes = pd.read_parquet("data_us/phase3_scan/phase3_scenes.parquet")
+done = {p.stem for p in Path("data_us/phase3_scan/results").glob("*.parquet")
         if not p.stem.endswith("_emb")}
 todo = sorted(set(scenes.mgrs_tile) - done)
 Path("mgrs_todo.txt").write_text("\n".join(todo))
@@ -73,11 +73,11 @@ PY
 
 # Periodic background sync — spot-interrupt safety. Loses ≤5 min of work if
 # AWS reclaims the instance.
-mkdir -p data_us/phase3_results
+mkdir -p data_us/phase3_scan/results
 (
   while true; do
     sleep 300
-    aws s3 sync data_us/phase3_results/ "s3://${BUCKET}/phase3_results/" \
+    aws s3 sync data_us/phase3_scan/results/ "s3://${BUCKET}/phase3_results/" \
         --only-show-errors || true
   done
 ) &
@@ -90,7 +90,7 @@ python -u -m phase3_scan.v1.infer_shard --mgrs-list ../mgrs_todo.txt 2>&1 | tee 
 cd ..
 
 # Final sync to catch anything the bg loop hasn't picked up.
-aws s3 sync data_us/phase3_results/ "s3://${BUCKET}/phase3_results/" --only-show-errors
+aws s3 sync data_us/phase3_scan/results/ "s3://${BUCKET}/phase3_results/" --only-show-errors
 echo "[bootstrap] uploaded results to s3://${BUCKET}/phase3_results/"
 
 # Auto-terminate. The instance was launched with InstanceInitiatedShutdownBehavior=terminate

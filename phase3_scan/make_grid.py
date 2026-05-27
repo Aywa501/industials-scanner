@@ -14,7 +14,7 @@ Run locally once:
     cd sites_us
     python -m phase3_scan.make_grid
 
-Output: data_us/phase3_grid.parquet
+Output: data_us/phase3_scan/phase3_grid.parquet
 """
 
 from __future__ import annotations
@@ -37,8 +37,8 @@ from shapely.ops import unary_union
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
 DATA_US = ROOT.parent / "data_us"
-GRID_PATH = DATA_US / "phase3_grid.parquet"
-CACHE_DIR = DATA_US / "phase3_cache"
+GRID_PATH = DATA_US / "phase3_scan" / "phase3_grid.parquet"
+CACHE_DIR = DATA_US / "phase3_scan" / "cache"
 
 TILE_SIZE_M = 2240.0      # 224 px × 10 m/px
 STRIDE_M = 1680.0         # 25% overlap

@@ -8,8 +8,8 @@ training. Runs single-process on one GPU box.
 
 ```
 cd sites_us
-python phase2_classifier/v2/v2_build_dataset.py        # data_us/v2_dataset_manifest.parquet (~103K rows / 5,659 groups)
-python -m phase2_classifier.v2.v2_build_scenes_index   # data_us/v2_scenes_index.parquet (~33K scenes / 4,253 groups)
+python phase2_classifier/v2/v2_build_dataset.py        # data_us/phase2/v2_dataset_manifest.parquet (~103K rows / 5,659 groups)
+python -m phase2_classifier.v2.v2_build_scenes_index   # data_us/phase2/v2_scenes_index.parquet (~33K scenes / 4,253 groups)
 chmod +x phase2_classifier/v2/push_v2_bundle.sh phase2_classifier/v2/bootstrap_v2.sh
 ./phase2_classifier/v2/push_v2_bundle.sh
 ```
@@ -117,14 +117,14 @@ Watch for:
 ## 6. Pull artifacts
 
 ```
-aws s3 sync s3://industrials-scanner-us-west-2/v2-artifacts/v2/ data_us/v2/
+aws s3 sync s3://industrials-scanner-us-west-2/v2-artifacts/v2/ data_us/phase2/v2/
 ```
 
 Artifacts (one set per encoder):
-- `data_us/v2/emb_<MODEL>.npy`
-- `data_us/v2/v2_embeddings_index.parquet`
-- `data_us/v2/stage1_industrial_v2_<MODEL>.pt` (3-class probe)
-- `data_us/v2/stage1_v2_train_report_<MODEL>.json`, `..._eval_report_<MODEL>.json`
+- `data_us/phase2/v2/emb_<MODEL>.npy`
+- `data_us/phase2/v2/v2_embeddings_index.parquet`
+- `data_us/phase2/v2/stage1_industrial_v2_<MODEL>.pt` (3-class probe)
+- `data_us/phase2/v2/stage1_v2_train_report_<MODEL>.json`, `..._eval_report_<MODEL>.json`
 
 ## 7. Terminate
 
@@ -136,6 +136,6 @@ with `InstanceInitiatedShutdownBehavior=terminate`. Verify in EC2 console.
 Once embeddings are on S3, retraining probes is local:
 
 ```
-aws s3 cp s3://industrials-scanner-us-west-2/v2-artifacts/v2/ data_us/v2/ --recursive
+aws s3 cp s3://industrials-scanner-us-west-2/v2-artifacts/v2/ data_us/phase2/v2/ --recursive
 python sites_us/phase2_classifier/v2/v2_train.py --skip-embed
 ```

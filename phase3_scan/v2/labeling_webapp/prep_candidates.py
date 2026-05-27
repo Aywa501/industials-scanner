@@ -36,7 +36,7 @@ CHIPS_DIR = ARTIFACTS / "chips"
 QUEUE_PATH = ARTIFACTS / "queue.json"
 
 DATA_US = ROOT.parent / "data_us"
-SCENES_PATH = DATA_US / "phase3_scenes.parquet"
+SCENES_PATH = DATA_US / "phase3_scan" / "phase3_scenes.parquet"
 
 RESULTS_DIR = Path(os.environ.get("RESULTS_DIR", "/tmp/v2_results"))
 

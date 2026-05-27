@@ -19,9 +19,9 @@ from sklearn.model_selection import GroupKFold
 ROOT = Path(__file__).resolve().parents[1]
 DATA_US = ROOT.parent / "data_us"
 
-FILT_PATH = DATA_US / "stage1_filtered_dataset.parquet"
-EMB_PATH = DATA_US / "stage1_embeddings.npy"
-INDEX_PATH = DATA_US / "stage1_embeddings_index.parquet"
+FILT_PATH = DATA_US / "phase1" / "stage1_filtered_dataset.parquet"
+EMB_PATH = DATA_US / "phase1" / "stage1_embeddings.npy"
+INDEX_PATH = DATA_US / "phase1" / "stage1_embeddings_index.parquet"
 
 N_FOLDS = 5
 EPOCHS = 30

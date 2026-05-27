@@ -1,7 +1,7 @@
 """Binary eval on the v2 test set.
 
 Compares:
-  - v1 probe (data_us/stage1_industrial_v1.pt) applied to v2's dino_sat493m embeddings
+  - v1 probe (data_us/phase1/stage1_industrial_v1.pt) applied to v2's dino_sat493m embeddings
   - v2 retrained binary probes for each of the 5 encoders
 
 Binary label mapping:

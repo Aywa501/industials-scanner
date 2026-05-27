@@ -3,15 +3,15 @@
 Tested on g6.2xlarge (L4) and g4dn.2xlarge (T4). Bandwidth-bound, so the
 cheaper T4 box matches L4 wall-clock — see launch_v2.md for instance picking.
 
-Reads `data_us/v2_dataset_manifest.parquet` and produces, for each model M in
+Reads `data_us/phase2/v2_dataset_manifest.parquet` and produces, for each model M in
 the registry:
-  - data_us/v2/emb_<M>.npy             (fp16, N x emb_dim_M)
-  - data_us/v2/probes/probe_<M>.pt
-  - data_us/v2/probes/probe_<M>_train.json
-  - data_us/v2/probes/probe_<M>_eval.json
+  - data_us/phase2/v2/emb_<M>.npy             (fp16, N x emb_dim_M)
+  - data_us/phase2/v2/probes/probe_<M>.pt
+  - data_us/phase2/v2/probes/probe_<M>_train.json
+  - data_us/phase2/v2/probes/probe_<M>_eval.json
 plus a shared:
-  - data_us/v2/v2_embeddings_index.parquet  (one row per tile, alignment for all emb_*.npy)
-  - data_us/v2/leaderboard.json             (cross-model summary)
+  - data_us/phase2/v2/v2_embeddings_index.parquet  (one row per tile, alignment for all emb_*.npy)
+  - data_us/phase2/v2/leaderboard.json             (cross-model summary)
 
 Pipeline:
   * Group manifest rows by (mgrs_tile, target_year). STAC search Element84 for
@@ -63,11 +63,11 @@ from transformers import AutoModel
 
 ROOT = Path(__file__).resolve().parents[3]
 DATA_US = ROOT / "data_us"
-MANIFEST = DATA_US / "v2_dataset_manifest.parquet"
-SCENES_INDEX = DATA_US / "v2_scenes_index.parquet"
+MANIFEST = DATA_US / "phase2" / "v2_dataset_manifest.parquet"
+SCENES_INDEX = DATA_US / "phase2" / "v2_scenes_index.parquet"
 
-# v2.1 outputs go under data_us/v2/
-V2_DIR = DATA_US / "v2"
+# v2.1 outputs go under data_us/phase2/v2/
+V2_DIR = DATA_US / "phase2" / "v2"
 V2_DIR.mkdir(parents=True, exist_ok=True)
 PROBES_DIR = V2_DIR / "probes"
 PROBES_DIR.mkdir(parents=True, exist_ok=True)

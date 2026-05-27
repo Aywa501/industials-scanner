@@ -12,7 +12,7 @@ Why this exists:
   / etc.) — that's the relevant negative distribution for grading.
 
 Output:
-  data_us/test_neg_v2_manifest.parquet (schema-compatible with v2 manifest)
+  data_us/phase2/test_neg_v2_manifest.parquet (schema-compatible with v2 manifest)
 """
 from __future__ import annotations
 
@@ -30,9 +30,9 @@ from phase2_classifier.v2.v2_build_dataset import (
 
 ROOT = Path(__file__).resolve().parents[3]
 DATA_US = ROOT / "data_us"
-OVERTURE = DATA_US / "overture_industrial_conus_2025_aligned.parquet"
-TRAIN_MANIFEST = DATA_US / "v2_dataset_manifest.parquet"
-OUT = DATA_US / "test_neg_v2_manifest.parquet"
+OVERTURE = DATA_US / "external" / "overture_industrial_conus_2025_aligned.parquet"
+TRAIN_MANIFEST = DATA_US / "phase2" / "v2_dataset_manifest.parquet"
+OUT = DATA_US / "phase2" / "test_neg_v2_manifest.parquet"
 
 N_TEST = 1000
 TEST_SEED = 44   # train used seed=43 inside osm_neg_rows; use a different one

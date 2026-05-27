@@ -6,8 +6,8 @@
 set -u
 cd "$(dirname "$0")/.."
 
-GRID="../data_us/phase3_grid.parquet"
-SCENES="../data_us/phase3_scenes.parquet"
+GRID="../data_us/phase3_scan/phase3_grid.parquet"
+SCENES="../data_us/phase3_scan/phase3_scenes.parquet"
 COOLDOWN="${SCENES_COOLDOWN:-360}"
 MAX_ATTEMPTS="${SCENES_MAX_ATTEMPTS:-40}"
 

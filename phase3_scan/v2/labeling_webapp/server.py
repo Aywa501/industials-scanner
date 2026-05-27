@@ -23,7 +23,7 @@ QUEUE_PATH = ARTIFACTS / "queue.json"
 STATIC_DIR = Path(__file__).parent / "static"
 
 DATA_US = ROOT.parent / "data_us"
-LABELS_PATH = DATA_US / "candidate_labels_v2.parquet"
+LABELS_PATH = DATA_US / "labels" / "candidate_labels_v2.parquet"
 NOTES_PATH = DATA_US / "candidate_notes_v2.parquet"
 FLAGS_PATH = DATA_US / "candidate_flags_v2.parquet"
 WIDE_DIR = ARTIFACTS / "chips_wide"

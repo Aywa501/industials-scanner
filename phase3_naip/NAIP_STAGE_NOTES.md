@@ -1,8 +1,22 @@
 # Phase 3 NAIP Stage — Pipeline Design (2026-05-22)
 
+> **STATUS — DEAD END (2026-05-25).** This iteration is abandoned in favor of a different Stage 2 (v3) approach worked on separately, which produces a different candidate set and changes what the right Stage 3 looks like. The SAM 3 + NAIP architecture below works (benchmarked 134.6s / 100 clusters on g6e.2xlarge, ~32 hr / ~$25 for the full 113,966-cluster filtered set), but the per-cluster compute is too expensive for the scale we're now targeting. Pieces likely worth carrying into the next iteration:
+> - **SAM 3 text-prompted segmentation** with a small prompt set (5: industrial building, warehouse, parking lot, storage tank, silo). Encoder cost dominates (~0.34s/cluster vs ~0.035s/cluster/prompt) so trimming prompts has diminishing returns.
+> - **VRAM-budget batch admission** (`probe_batch_n()` in `naip_sam.py`) — measures peak alloc at N=1 and N=2, fits batch size to GPU budget. Auto-tunes across hardware.
+> - **Batched SAM 3 forward** — one decoder call per N-image × M-prompt batch (vision FPN repeated M times, prompt tokens tiled N times). Replaces the original per-prompt loop.
+> - **ProcessPool postproc** with `mp_context=spawn` for the mask→polygon→reproject path (GIL-bound under shapely + pyproj).
+> - **EC2 sweet-spot finding**: g6e.2xlarge (8 vCPU, L40S 48 GB) is the right size for this workload — postproc drain just exceeds SAM production, no wasted CPU. Verified via telemetry, NOT just stage-summed numbers (steady-state GPU 100% + CPU 82% on probe samples).
+> - **OSM-cut clustering** (`cluster_osm_cut.py`) for breaking 155 km mega-blobs into road-bounded sub-clusters. Stable across NC/CONUS tests.
+> - Stage-summed timing is misleading when stages parallelize across pools — verify with a system telemetry sample (cpu_pct / gpu_util_pct) BEFORE concluding which stage is the bottleneck.
+>
+> Do **NOT** launch the full prod run. The benchmarks at shards 19 and 531 are the most that should be spent on this architecture.
+
+---
+
+
 ## Purpose
 
-Stage 3 Part 2 of the industrials detection pipeline. Takes the 22,629 S2 DBSCAN candidates in `data_us/phase3_candidates_v2.parquet` and refines them into discrete industrial **sites**, using NAIP aerial imagery + SAM 3 text-prompted segmentation + OSM/Overture/location context + a model/LLM reasoning step. Output feeds the web verification agent (operator / NAICS resolution, multi-source timeline).
+Stage 3 Part 2 of the industrials detection pipeline. Takes the 22,629 S2 DBSCAN candidates in `data_us/phase3_scan/phase3_candidates_v2.parquet` and refines them into discrete industrial **sites**, using NAIP aerial imagery + SAM 3 text-prompted segmentation + OSM/Overture/location context + a model/LLM reasoning step. Output feeds the web verification agent (operator / NAICS resolution, multi-source timeline).
 
 Supersedes the SAM 1 AMG + hand-labeled GBT classifier design (Design A in the earlier notes; the approved plan at `.claude/plans/eventual-stirring-pillow.md`). The SAM 3 + reasoning architecture eliminates the manual-labeling sub-task and gives the downstream step actual category labels instead of having to derive them from heuristics on raw masks.
 
@@ -102,8 +116,8 @@ Sites pass to the agent step with: polygon set, NAIP imagery, SAM 3 labels, feat
 
 ## Carried over (don't rebuild)
 
-- `data_us/phase3_candidates_v2.parquet` — input.
-- `data_us/overture_industrial_conus_2025_aligned.parquet` — Overture (bbox-only).
+- `data_us/phase3_scan/phase3_candidates_v2.parquet` — input.
+- `data_us/external/overture_industrial_conus_2025_aligned.parquet` — Overture (bbox-only).
 - `data_us/phase3_naip/naip_tile_index.parquet` — 216k NAIP COG tiles indexed (47 states, naming convention per state-year).
 - `data_us/phase3_naip/candidate_buildings.parquet`, `candidates_with_buildings.parquet` — Step 1-2 output.
 - NAIP COG read pattern (`naip_sam.py:read_naip_mosaic` — WarpedVRT to EPSG:5070).
@@ -123,7 +137,7 @@ Top clusters by extent inspected (Goldsboro / Snow Hill / Princeton NC commercia
 
 Implementation: `sites_us/phase3_naip/osm_cut_test.py`. Single-candidate harness; the production cluster step (#29) lifts the same logic across all candidates.
 
-Roads source: `data_us/osm/nc/north-carolina-latest-free.shp.zip` (Geofabrik, ~776 MB; `gis_osm_roads_free_1.shp`). Production needs the per-state extracts for the full CONUS sweep.
+Roads source: `data_us/external/osm/nc/north-carolina-latest-free.shp.zip` (Geofabrik, ~776 MB; `gis_osm_roads_free_1.shp`). Production needs the per-state extracts for the full CONUS sweep.
 
 ## Build order
 

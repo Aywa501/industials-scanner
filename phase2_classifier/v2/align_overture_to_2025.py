@@ -27,10 +27,10 @@ Run locally:
     python -m phase2_classifier.v2.align_overture_to_2025
 
 Inputs:
-    data_us/overture_industrial_conus.parquet   (2026-04-15 vintage)
+    data_us/external/overture_industrial_conus.parquet   (2026-04-15 vintage)
 
 Output:
-    data_us/overture_industrial_conus_2025_aligned.parquet
+    data_us/external/overture_industrial_conus_2025_aligned.parquet
 """
 
 from __future__ import annotations
@@ -68,8 +68,8 @@ CHANGELOG_TPL = (
     "theme=buildings/type=building/change_type=added/part-*.zstd.parquet"
 )
 
-INPUT = DATA_US / "overture_industrial_conus.parquet"
-OUTPUT = DATA_US / "overture_industrial_conus_2025_aligned.parquet"
+INPUT = DATA_US / "external" / "overture_industrial_conus.parquet"
+OUTPUT = DATA_US / "external" / "overture_industrial_conus_2025_aligned.parquet"
 
 
 def fetch_added_ids(con: duckdb.DuckDBPyConnection, release: str) -> set[str]:

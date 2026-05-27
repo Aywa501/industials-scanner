@@ -3,7 +3,7 @@
 Mirrors `find_s2_scenes.py` but:
   * keyed on (mgrs_tile, target_year) since v2 manifests carry per-row years
   * 6 bands (B02 B03 B04 B8A B11 B12) + SCL — Prithvi needs SWIR/NIR, not just RGB
-  * driven by `data_us/v2_dataset_manifest.parquet` (MGRS computed by mgrs lib
+  * driven by `data_us/phase2/v2_dataset_manifest.parquet` (MGRS computed by mgrs lib
     inside this script — manifest only has lat/lon)
 
 Run locally once:
@@ -11,7 +11,7 @@ Run locally once:
     python -m phase2_classifier.v2.v2_build_scenes_index
 
 Output:
-    data_us/v2_scenes_index.parquet
+    data_us/phase2/v2_scenes_index.parquet
       cols: mgrs_tile, year, scene_id, datetime, cloud_cover,
             B02_s3, B03_s3, B04_s3, B8A_s3, B11_s3, B12_s3, scl_s3
 """
@@ -30,8 +30,8 @@ from pystac_client import Client
 
 ROOT = Path(__file__).resolve().parents[3]
 DATA_US = ROOT / "data_us"
-MANIFEST = DATA_US / "v2_dataset_manifest.parquet"
-OUT_PATH = DATA_US / "v2_scenes_index.parquet"
+MANIFEST = DATA_US / "phase2" / "v2_dataset_manifest.parquet"
+OUT_PATH = DATA_US / "phase2" / "v2_scenes_index.parquet"
 
 STAC_URL = "https://earth-search.aws.element84.com/v1"
 COLLECTION = "sentinel-2-l2a"

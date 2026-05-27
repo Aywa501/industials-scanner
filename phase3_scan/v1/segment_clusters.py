@@ -1,9 +1,9 @@
 """Segment Phase 3 candidate clusters into individual facility points.
 
 Inputs:
-  - data_us/phase3_candidates.parquet  (3,028 clusters)
-  - data_us/phase3_singletons.parquet  (2,876 isolated p>=0.95 tiles)
-  - data_us/overture_industrial_conus.parquet  (CONUS industrial buildings)
+  - data_us/phase3_scan/phase3_candidates.parquet  (3,028 clusters)
+  - data_us/phase3_scan/phase3_singletons.parquet  (2,876 isolated p>=0.95 tiles)
+  - data_us/external/overture_industrial_conus.parquet  (CONUS industrial buildings)
 
 Approach:
   1. Compute each cluster's bbox area in km^2.
@@ -15,7 +15,7 @@ Approach:
   4. Singletons are kept as-is (one tile = one candidate point).
 
 Output:
-  - data_us/phase3_facilities.parquet
+  - data_us/phase3_scan/phase3_facilities.parquet
     Columns: facility_id, parent_candidate_id, lon, lat, n_buildings, source
               source in {'cluster_centroid', 'sub_cluster', 'singleton'}
 """

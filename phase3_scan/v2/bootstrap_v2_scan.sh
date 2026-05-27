@@ -26,11 +26,11 @@ fi
 echo "[bootstrap-v2] pulling bundle from s3://${BUCKET}/scan-v2-bundle"
 aws s3 sync "s3://${BUCKET}/scan-v2-bundle/" ./bundle/ --only-show-errors
 
-mkdir -p data_us sites_us data_us/v2/probes
+mkdir -p data_us sites_us data_us/phase2/v2/probes
 cp bundle/phase3_grid.parquet       data_us/
 cp bundle/phase3_scenes.parquet     data_us/
 cp bundle/overture_industrial_conus_2025_aligned.parquet data_us/
-cp bundle/probe_dino_vitb.pt        data_us/v2/probes/
+cp bundle/probe_dino_vitb.pt        data_us/phase2/v2/probes/
 cp -r bundle/code/sites_us/*        sites_us/
 cp bundle/.env                      sites_us/.env
 
@@ -164,9 +164,9 @@ echo "[bootstrap-v2] gdal: TIMEOUT=$GDAL_HTTP_TIMEOUT (HTTP/2 multiplex default)
 # Pull existing results from S3 so already-done shards are skipped on this
 # fresh instance. Without this, the worker re-processes every shard from
 # scratch even when 94 are already on S3 from earlier runs.
-mkdir -p data_us/phase3_results_v2
+mkdir -p data_us/phase3_scan/results_v2
 echo "[bootstrap-v2] pulling existing results from s3://${BUCKET}/phase3_results_v2/"
-aws s3 sync "s3://${BUCKET}/phase3_results_v2/" data_us/phase3_results_v2/ --only-show-errors
+aws s3 sync "s3://${BUCKET}/phase3_results_v2/" data_us/phase3_scan/results_v2/ --only-show-errors
 
 # Ensure the Sentinel-2 scenes index covers the full grid before scanning.
 # The bundle ships a complete index built locally; find_s2_scenes is resumable
@@ -181,8 +181,8 @@ echo "[bootstrap-v2] verifying scenes index (find_s2_scenes, resumable)"
 python - <<'PY'
 from pathlib import Path
 import pandas as pd
-scenes = pd.read_parquet("data_us/phase3_scenes.parquet")
-done = {p.stem for p in Path("data_us/phase3_results_v2").glob("*.parquet")
+scenes = pd.read_parquet("data_us/phase3_scan/phase3_scenes.parquet")
+done = {p.stem for p in Path("data_us/phase3_scan/results_v2").glob("*.parquet")
         if not p.stem.endswith("_emb")}
 todo = sorted(set(scenes.mgrs_tile) - done)
 Path("mgrs_todo.txt").write_text("\n".join(todo))
@@ -192,12 +192,12 @@ PY
 # Periodic background sync — spot-interrupt safety. Loses ≤5 min of work if
 # AWS reclaims the instance. Also syncs the bootstrap+worker log so we can
 # diagnose failures even when the instance is gone.
-mkdir -p data_us/phase3_results_v2
+mkdir -p data_us/phase3_scan/results_v2
 LOG_S3="s3://${BUCKET}/scan-v2-logs/${INSTANCE_ID}.out"
 (
   while true; do
     sleep 300
-    aws s3 sync data_us/phase3_results_v2/ "s3://${BUCKET}/phase3_results_v2/" \
+    aws s3 sync data_us/phase3_scan/results_v2/ "s3://${BUCKET}/phase3_results_v2/" \
         --only-show-errors || true
     aws s3 cp "$HOME/scan_v2.out" "$LOG_S3" --only-show-errors || true
   done
@@ -209,7 +209,7 @@ SYNC_PID=$!
 on_exit() {
   echo "[bootstrap-v2] EXIT: final log + results sync"
   aws s3 cp "$HOME/scan_v2.out" "$LOG_S3" --only-show-errors || true
-  aws s3 sync data_us/phase3_results_v2/ "s3://${BUCKET}/phase3_results_v2/" \
+  aws s3 sync data_us/phase3_scan/results_v2/ "s3://${BUCKET}/phase3_results_v2/" \
       --only-show-errors || true
   kill $SYNC_PID 2>/dev/null || true
   echo "[bootstrap-v2] terminating $INSTANCE_ID"
@@ -266,8 +266,8 @@ for attempt in $(seq 1 $MAX_ATTEMPTS); do
   REMAINING=$(python - <<'PY'
 from pathlib import Path
 import pandas as pd
-scenes = pd.read_parquet("../data_us/phase3_scenes.parquet")
-done = {p.stem for p in Path("../data_us/phase3_results_v2").glob("*.parquet")
+scenes = pd.read_parquet("../data_us/phase3_scan/phase3_scenes.parquet")
+done = {p.stem for p in Path("../data_us/phase3_scan/results_v2").glob("*.parquet")
         if not p.stem.endswith("_emb")}
 print(len(set(scenes.mgrs_tile) - done))
 PY
@@ -282,7 +282,7 @@ done
 cd ..
 
 # Final sync to catch anything the bg loop hasn't picked up.
-aws s3 sync data_us/phase3_results_v2/ "s3://${BUCKET}/phase3_results_v2/" --only-show-errors
+aws s3 sync data_us/phase3_scan/results_v2/ "s3://${BUCKET}/phase3_results_v2/" --only-show-errors
 echo "[bootstrap-v2] uploaded results to s3://${BUCKET}/phase3_results_v2/"
 
 echo "[bootstrap-v2] scan complete, terminating instance via EXIT trap"

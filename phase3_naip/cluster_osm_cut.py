@@ -8,7 +8,7 @@ the expensive NAIP step.
 
 Architecture validated on c_0000000 (see NAIP_STAGE_NOTES.md go/no-go gate).
 
-Per-state Geofabrik shapefiles are downloaded on demand to data_us/osm/<st>/.
+Per-state Geofabrik shapefiles are downloaded on demand to data_us/external/osm/<st>/.
 Roads are loaded once per state, then re-used across every candidate in that
 state. Multi-state candidates (rare) load both states.
 
@@ -46,7 +46,7 @@ from shapely.strtree import STRtree
 
 DATA_US = Path(__file__).resolve().parents[2] / "data_us"
 OUT_DIR = DATA_US / "phase3_naip"
-OSM_DIR = DATA_US / "osm"
+OSM_DIR = DATA_US / "external" / "osm"
 
 CANDIDATE_BUILDINGS = OUT_DIR / "candidate_buildings.parquet"
 CANDIDATES_SUMMARY = OUT_DIR / "candidates_with_buildings.parquet"
@@ -106,6 +106,16 @@ DEFAULT_MERGE_BUFFER_M = 300.0
 # clusters that the area floor would otherwise drop).
 DEFAULT_ANCHOR_AREA_M2 = 1000.0
 ANCHOR_CLASSES = {"industrial", "warehouse", "hangar", "factory", "manufacture"}
+
+# Pre-cluster building bbox-area floor. Industrial site announcements
+# correspond to large footprints; sub-5000 m² bbox buildings are dominated by
+# residential/small-commercial noise that we don't expect to match an
+# announcement. Drop them before clustering.
+DEFAULT_BBOX_AREA_FLOOR_M2 = 5000.0
+# Post-cluster total bbox-area floor. After per-building filter, a cluster's
+# summed building bbox area must reach this floor; industrial complexes
+# converge on ≥ 1 ha in remote-sensing literature.
+DEFAULT_CLUSTER_TOTAL_BBOX_M2 = 10000.0
 
 
 # ---------- state assignment ------------------------------------------------
@@ -279,6 +289,16 @@ def main():
     ap.add_argument("--merge-buffer-m", type=float, default=DEFAULT_MERGE_BUFFER_M)
     ap.add_argument("--anchor-area-m2", type=float, default=DEFAULT_ANCHOR_AREA_M2,
                     help="cluster must have max(area) ≥ this OR an anchor-class member")
+    ap.add_argument("--bbox-area-floor-m2", type=float,
+                    default=DEFAULT_BBOX_AREA_FLOOR_M2,
+                    help=f"drop buildings whose lon/lat bbox area is below this "
+                         f"floor before clustering (default "
+                         f"{DEFAULT_BBOX_AREA_FLOOR_M2:.0f} m²; 0 disables)")
+    ap.add_argument("--cluster-total-bbox-m2", type=float,
+                    default=DEFAULT_CLUSTER_TOTAL_BBOX_M2,
+                    help=f"drop clusters whose summed building bbox area is "
+                         f"below this floor (default "
+                         f"{DEFAULT_CLUSTER_TOTAL_BBOX_M2:.0f} m²; 0 disables)")
     ap.add_argument("--out-suffix", type=str, default="",
                     help="suffix on output parquet names (for parallel experiments)")
     args = ap.parse_args()
@@ -289,6 +309,18 @@ def main():
     tile_index = pd.read_parquet(NAIP_TILE_INDEX)
     print(f"[cluster] {len(cands):,} candidates, {len(buildings):,} buildings, "
           f"{len(tile_index):,} NAIP tiles", flush=True)
+
+    if args.bbox_area_floor_m2 > 0:
+        lat_mid = 0.5 * (buildings["ymin"] + buildings["ymax"])
+        dx_m = ((buildings["xmax"] - buildings["xmin"])
+                * 111320.0 * np.cos(np.radians(lat_mid)))
+        dy_m = (buildings["ymax"] - buildings["ymin"]) * 111320.0
+        bbox_area = (dx_m * dy_m).abs()
+        pre = len(buildings)
+        buildings = buildings[bbox_area >= args.bbox_area_floor_m2].reset_index(drop=True)
+        print(f"[cluster] bbox-area floor ≥{args.bbox_area_floor_m2:.0f} m²: "
+              f"{pre:,} → {len(buildings):,} buildings "
+              f"({pre - len(buildings):,} dropped)", flush=True)
 
     cand_state = assign_state_per_candidate(cands, tile_index)
     no_state = set(cands.candidate_id) - set(cand_state)
@@ -356,6 +388,21 @@ def main():
           f"{pre_n_clusters:,} → {post_n_clusters:,} clusters "
           f"({pre_n_clusters - post_n_clusters:,} dropped); "
           f"{pre_b:,} → {len(out_b):,} buildings", flush=True)
+
+    if args.cluster_total_bbox_m2 > 0:
+        lat_mid = 0.5 * (out_b["ymin"] + out_b["ymax"])
+        dx_m = ((out_b["xmax"] - out_b["xmin"])
+                * 111320.0 * np.cos(np.radians(lat_mid)))
+        dy_m = (out_b["ymax"] - out_b["ymin"]) * 111320.0
+        bbox_area = (dx_m * dy_m).abs()
+        totals = bbox_area.groupby(out_b["cluster_id"]).sum()
+        keep_total = set(totals[totals >= args.cluster_total_bbox_m2].index)
+        pre_b2 = len(out_b); pre_c2 = out_b.cluster_id.nunique()
+        out_b = out_b[out_b.cluster_id.isin(keep_total)].reset_index(drop=True)
+        print(f"[cluster] cluster-total bbox ≥{args.cluster_total_bbox_m2:.0f} m²: "
+              f"{pre_c2:,} → {out_b.cluster_id.nunique():,} clusters "
+              f"({pre_c2 - out_b.cluster_id.nunique():,} dropped); "
+              f"{pre_b2:,} → {len(out_b):,} buildings", flush=True)
 
     summary = cluster_summary(out_b)
     suf = args.out_suffix

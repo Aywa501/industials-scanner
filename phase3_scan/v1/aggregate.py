@@ -1,9 +1,9 @@
 """Aggregate per-MGRS prob parquets into clustered candidate sites.
 
 Reads:
-  data_us/phase3_results/*.parquet         (per-tile probs)
+  data_us/phase3_scan/results/*.parquet         (per-tile probs)
 Writes:
-  data_us/phase3_candidates.parquet        (clustered candidate sites)
+  data_us/phase3_scan/phase3_candidates.parquet        (clustered candidate sites)
 
 Pipeline:
   1. Concat all per-MGRS result parquets

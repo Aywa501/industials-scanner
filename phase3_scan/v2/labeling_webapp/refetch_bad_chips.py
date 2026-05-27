@@ -27,7 +27,7 @@ CHIPS_DIR = ARTIFACTS / "chips"
 WIDE_DIR = ARTIFACTS / "chips_wide"
 
 DATA_US = ROOT.parent / "data_us"
-SCENES_PATH = DATA_US / "phase3_scenes.parquet"
+SCENES_PATH = DATA_US / "phase3_scan" / "phase3_scenes.parquet"
 
 IMG_NATIVE = 256
 WIDE_NATIVE = 512

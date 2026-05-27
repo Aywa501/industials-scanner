@@ -13,9 +13,9 @@ PREFIX="s3://${BUCKET}/scan-bundle"
 echo "[push] target: $PREFIX"
 
 # Data the worker reads
-aws s3 cp data_us/phase3_grid.parquet      "$PREFIX/phase3_grid.parquet"
-aws s3 cp data_us/phase3_scenes.parquet    "$PREFIX/phase3_scenes.parquet"
-aws s3 cp data_us/stage1_industrial_v1.pt  "$PREFIX/stage1_industrial_v1.pt"
+aws s3 cp data_us/phase3_scan/phase3_grid.parquet      "$PREFIX/phase3_grid.parquet"
+aws s3 cp data_us/phase3_scan/phase3_scenes.parquet    "$PREFIX/phase3_scenes.parquet"
+aws s3 cp data_us/phase1/stage1_industrial_v1.pt  "$PREFIX/stage1_industrial_v1.pt"
 
 # Worker code
 aws s3 cp sites_us/phase3_scan/v1/infer_shard.py "$PREFIX/code/sites_us/phase3_scan/v1/infer_shard.py"

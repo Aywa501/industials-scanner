@@ -80,7 +80,7 @@ trap on_exit EXIT
 echo "[bootstrap-test-neg] pulling test-neg bundle from s3://${BUCKET}/test-neg-bundle"
 aws s3 sync "s3://${BUCKET}/test-neg-bundle/" ./bundle/ --only-show-errors
 
-mkdir -p data_us sites_us data_us/v2
+mkdir -p data_us sites_us data_us/phase2/v2
 
 # Manifest + code from test-neg bundle
 cp bundle/test_neg_v2_manifest.parquet data_us/
@@ -90,17 +90,17 @@ cp bundle/.env                         sites_us/.env || true
 # Pull the v2 dataset manifest (load_strict_positives joins is_inferred from it)
 echo "[bootstrap-test-neg] pulling v2_dataset_manifest.parquet from v2-bundle"
 aws s3 cp "s3://${BUCKET}/v2-bundle/v2_dataset_manifest.parquet" \
-  data_us/v2_dataset_manifest.parquet --only-show-errors
+  data_us/phase2/v2_dataset_manifest.parquet --only-show-errors
 
 # Pull v2-artifacts: probes + prior-run embeddings (for strict-positives lookup)
 echo "[bootstrap-test-neg] pulling v2-artifacts (probes + emb_idx + emb_*.npy)"
-aws s3 sync "s3://${BUCKET}/v2-artifacts/v2/probes/"  data_us/v2/probes/  --only-show-errors
+aws s3 sync "s3://${BUCKET}/v2-artifacts/v2/probes/"  data_us/phase2/v2/probes/  --only-show-errors
 aws s3 cp   "s3://${BUCKET}/v2-artifacts/v2/v2_embeddings_index.parquet" \
-  data_us/v2/v2_embeddings_index.parquet --only-show-errors
+  data_us/phase2/v2/v2_embeddings_index.parquet --only-show-errors
 # emb_*.npy live at v2-artifacts/v2/ root, not under embeds/ — pull only those
 for m in dino_sat493m dino_vitb resnet50 prithvi_300m prithvi_600m; do
   aws s3 cp "s3://${BUCKET}/v2-artifacts/v2/emb_${m}.npy" \
-    "data_us/v2/embeds/emb_${m}.npy" --only-show-errors || echo "  skip emb_${m}.npy"
+    "data_us/phase2/v2/embeds/emb_${m}.npy" --only-show-errors || echo "  skip emb_${m}.npy"
 done
 
 set -a
@@ -144,13 +144,13 @@ PY
 cd sites_us
 
 # Env vars to make embed_test_negatives.py run in EC2 mode:
-#   - point at the data_us/v2/ paths we just populated
+#   - point at the data_us/phase2/v2/ paths we just populated
 #   - use cuda
 #   - skip local-Mac throttling overrides (use v2_train EC2 defaults)
 #   - leave AWS auth to v2_train's default rasterio env (instance role works)
-export TEST_NEG_PROBES_DIR="${WORK}/data_us/v2/probes"
-export TEST_NEG_EXISTING_EMB_INDEX="${WORK}/data_us/v2/v2_embeddings_index.parquet"
-export TEST_NEG_EXISTING_EMB_DIR="${WORK}/data_us/v2/embeds"
+export TEST_NEG_PROBES_DIR="${WORK}/data_us/phase2/v2/probes"
+export TEST_NEG_EXISTING_EMB_INDEX="${WORK}/data_us/phase2/v2/v2_embeddings_index.parquet"
+export TEST_NEG_EXISTING_EMB_DIR="${WORK}/data_us/phase2/v2/embeds"
 export TEST_NEG_DEVICE="cuda"
 export TEST_NEG_AWS_ANON="NO"
 export TEST_NEG_USE_V2_DEFAULTS="1"
@@ -163,8 +163,8 @@ cd ..
 
 # ---------- Sync results + log back to S3 -----------------------------------
 echo "[bootstrap-test-neg] syncing results to s3://${BUCKET}/test-neg-artifacts/"
-aws s3 sync data_us/test_neg_v2/ "s3://${BUCKET}/test-neg-artifacts/test_neg_v2/" --only-show-errors
-aws s3 cp data_us/test_neg_v2_scenes_index.parquet \
+aws s3 sync data_us/phase2/test_neg_v2/ "s3://${BUCKET}/test-neg-artifacts/test_neg_v2/" --only-show-errors
+aws s3 cp data_us/phase2/test_neg_v2_scenes_index.parquet \
   "s3://${BUCKET}/test-neg-artifacts/test_neg_v2_scenes_index.parquet" --only-show-errors || true
 aws s3 cp test_neg_embed.log \
   "s3://${BUCKET}/test-neg-artifacts/test_neg_embed.log" --only-show-errors

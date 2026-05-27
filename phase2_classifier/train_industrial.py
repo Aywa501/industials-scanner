@@ -6,13 +6,13 @@ Reports per-fold + aggregated F1 / AUC / recall@target-precision. Then
 retrains a final model on the full filtered pool and saves it.
 
 Inputs:
-- data_us/stage1_filtered_dataset.parquet  filtered training pool
-- data_us/stage1_embeddings.npy            (N_all, 1024) float16
-- data_us/stage1_embeddings_index.parquet  site_id, year, label, ...
+- data_us/phase1/stage1_filtered_dataset.parquet  filtered training pool
+- data_us/phase1/stage1_embeddings.npy            (N_all, 1024) float16
+- data_us/phase1/stage1_embeddings_index.parquet  site_id, year, label, ...
 
 Outputs:
-- data_us/stage1_industrial_v1.pt          {'state_dict': ..., 'meta': ...}
-- data_us/stage1_train_report.json         per-fold + aggregate metrics
+- data_us/phase1/stage1_industrial_v1.pt          {'state_dict': ..., 'meta': ...}
+- data_us/phase1/stage1_train_report.json         per-fold + aggregate metrics
 """
 
 from __future__ import annotations
@@ -32,12 +32,12 @@ from sklearn.model_selection import GroupKFold
 ROOT = Path(__file__).resolve().parents[1]
 DATA_US = ROOT.parent / "data_us"
 
-FILT_PATH = DATA_US / "stage1_filtered_dataset.parquet"
-EMB_PATH = DATA_US / "stage1_embeddings.npy"
-INDEX_PATH = DATA_US / "stage1_embeddings_index.parquet"
+FILT_PATH = DATA_US / "phase1" / "stage1_filtered_dataset.parquet"
+EMB_PATH = DATA_US / "phase1" / "stage1_embeddings.npy"
+INDEX_PATH = DATA_US / "phase1" / "stage1_embeddings_index.parquet"
 
-OUT_MODEL = DATA_US / "stage1_industrial_v1.pt"
-OUT_REPORT = DATA_US / "stage1_train_report.json"
+OUT_MODEL = DATA_US / "phase1" / "stage1_industrial_v1.pt"
+OUT_REPORT = DATA_US / "phase1" / "stage1_train_report.json"
 
 N_FOLDS = 5
 EPOCHS = 30

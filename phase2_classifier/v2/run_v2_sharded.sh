@@ -23,7 +23,7 @@ echo "[run-v2-sharded] launching $NUM_SHARDS parallel embed workers"
 (
   while true; do
     sleep 300
-    aws s3 sync "$WORK/data_us/v2/" "s3://${BUCKET}/v2-artifacts/v2/" --only-show-errors || true
+    aws s3 sync "$WORK/data_us/phase2/v2/" "s3://${BUCKET}/v2-artifacts/v2/" --only-show-errors || true
   done
 ) &
 SYNC_PID=$!
@@ -61,5 +61,5 @@ cd sites_us
 python -u phase2_classifier/v2/v2_train.py --skip-embed
 cd ..
 
-aws s3 sync "$WORK/data_us/v2/" "s3://${BUCKET}/v2-artifacts/v2/" --only-show-errors || true
+aws s3 sync "$WORK/data_us/phase2/v2/" "s3://${BUCKET}/v2-artifacts/v2/" --only-show-errors || true
 echo "[run-v2-sharded] done"

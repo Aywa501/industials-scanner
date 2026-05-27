@@ -11,13 +11,13 @@ get written to a relabel shortlist for the user to confirm in the labeling
 webapp before they're discarded.
 
 Inputs:
-- data_us/stage1_embeddings.npy            (N, 1024) float16
-- data_us/stage1_embeddings_index.parquet  site_id, year, label, ...
+- data_us/phase1/stage1_embeddings.npy            (N, 1024) float16
+- data_us/phase1/stage1_embeddings_index.parquet  site_id, year, label, ...
 
 Outputs:
-- data_us/stage1_filtered_dataset.parquet  filtered training pool
-- data_us/stage1_relabel_shortlist.json    [{site_id, year, ...}] for webapp
-- data_us/stage1_filter_report.json        summary stats
+- data_us/phase1/stage1_filtered_dataset.parquet  filtered training pool
+- data_us/phase1/stage1_relabel_shortlist.json    [{site_id, year, ...}] for webapp
+- data_us/phase1/stage1_filter_report.json        summary stats
 """
 
 from __future__ import annotations
@@ -32,13 +32,13 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 DATA_US = ROOT.parent / "data_us"
 
-EMB_PATH = DATA_US / "stage1_embeddings.npy"
-INDEX_PATH = DATA_US / "stage1_embeddings_index.parquet"
-DATASET_PATH = DATA_US / "stage1_dataset.parquet"
+EMB_PATH = DATA_US / "phase1" / "stage1_embeddings.npy"
+INDEX_PATH = DATA_US / "phase1" / "stage1_embeddings_index.parquet"
+DATASET_PATH = DATA_US / "phase1" / "stage1_dataset.parquet"
 
-OUT_DATASET_PATH = DATA_US / "stage1_filtered_dataset.parquet"
-OUT_SHORTLIST_PATH = DATA_US / "stage1_relabel_shortlist.json"
-OUT_REPORT_PATH = DATA_US / "stage1_filter_report.json"
+OUT_DATASET_PATH = DATA_US / "phase1" / "stage1_filtered_dataset.parquet"
+OUT_SHORTLIST_PATH = DATA_US / "phase1" / "stage1_relabel_shortlist.json"
+OUT_REPORT_PATH = DATA_US / "phase1" / "stage1_filter_report.json"
 
 SHORTLIST_N = 50
 

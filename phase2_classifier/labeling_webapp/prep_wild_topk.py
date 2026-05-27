@@ -1,7 +1,7 @@
 """Build chip strips + queue for wild-FP bucketing pass.
 
 Reads:
-- data_us/stage1_wild_topk.csv         per-site top-K wild predictions
+- data_us/phase1/stage1_wild_topk.csv         per-site top-K wild predictions
 - gs://{GCS_BUCKET}/manifest/s2_chip_manifest.parquet
 
 Outputs:
@@ -43,7 +43,7 @@ CHIPS_DIR = ARTIFACTS / "chips"
 QUEUE_PATH = ARTIFACTS / "wild_topk_queue.json"
 
 DATA_US = ROOT.parent / "data_us"
-TOPK_CSV = DATA_US / "stage1_wild_topk.csv"
+TOPK_CSV = DATA_US / "phase1" / "stage1_wild_topk.csv"
 
 N_SITES = 50  # how many top-K sites to surface for bucketing
 RENDER_PX = 512

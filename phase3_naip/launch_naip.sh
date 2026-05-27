@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # Launch the Phase 3 NAIP worker on a SPOT GPU instance.
 #
-# SPOT ONLY — never on-demand (per [[never_on_demand]]). g7e.2xlarge primary
-# (Blackwell RTX PRO 6000, 96 GB VRAM — most cost-effective for GPU-bound SAM 3),
-# g6e.2xlarge fallback (L40S, 48 GB VRAM). Phase 3 NAIP is GPU-bound: g6.8xlarge
-# benchmark showed CPU 3%, RAM 3%, GPU 68%, so a beefier GPU on a smaller box
-# dominates. SPS (us-west-2 2026-05-22): g7e.2xlarge=3 in usw2-az3, =1 elsewhere
-# — so the launcher will mostly land in az3 or fall back to g6e.2xlarge (clean
-# 3 across all 4 AZs). Spot quota 32 vCPU; both types are 8 vCPU, well under.
+# SPOT ONLY — never on-demand (per [[never_on_demand]]). g6e.2xlarge primary
+# (L40S 48 GB VRAM, 8 vCPU). 2026-05-25 telemetry confirms steady-state GPU
+# 100% / CPU 40%: SAM forward IS the bottleneck. Stage-summed postproc looks
+# big (62%) because it's masured across all clusters, but the ProcessPool
+# parallelizes it under 8 procs to a wall floor below SAM's serialized critical
+# path. Bigger vCPU counts don't move the wall.
 # Tries every default-VPC AZ in turn; on capacity-fail across all AZs, waits
 # 5 min and retries the sweep.
 #
@@ -28,7 +27,7 @@ KEY="industrials-scanner-key"
 SG="sg-0e344ef6a61de3d56"
 PROFILE="industrials-scanner-profile"
 SUBNETS=(subnet-096bbbe80d8ea7409 subnet-0463b6600119e939d subnet-0c177d1da88790caa subnet-0e7a01003e03380f8)
-TYPES=(g7e.2xlarge g6e.2xlarge)
+TYPES=(g6e.2xlarge)  # GPU-bound on L40S; CPU 40% during steady-state (not saturated). Bigger vCPU box gains nothing.
 
 SHARD="${SHARD:-0/1}"
 LIMIT="${LIMIT:-}"

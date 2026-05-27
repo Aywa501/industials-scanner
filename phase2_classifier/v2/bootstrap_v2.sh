@@ -108,12 +108,12 @@ print("CUDA:", torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch
 PY
 
 # Background sync of v2/ artifacts during run (spot-interrupt safety).
-# Syncs everything under data_us/v2/ except the per-group embed_chunks resume
+# Syncs everything under data_us/phase2/v2/ except the per-group embed_chunks resume
 # cache (large + only useful for in-place resume on the same box).
 (
   while true; do
     sleep 300
-    aws s3 sync data_us/v2/ "s3://${BUCKET}/v2-artifacts/v2/" \
+    aws s3 sync data_us/phase2/v2/ "s3://${BUCKET}/v2-artifacts/v2/" \
         --exclude "embed_chunks/*" \
         --only-show-errors || true
   done
@@ -133,7 +133,7 @@ python -u phase2_classifier/v2/v2_train.py 2>&1 | tee ../v2_train.log
 cd ..
 
 # Final sync (include embed_chunks this time so a resumed run can pick up where we left off)
-aws s3 sync data_us/v2/ "s3://${BUCKET}/v2-artifacts/v2/" --only-show-errors
+aws s3 sync data_us/phase2/v2/ "s3://${BUCKET}/v2-artifacts/v2/" --only-show-errors
 aws s3 cp v2_train.log "s3://${BUCKET}/v2-artifacts/v2_train.log" --only-show-errors
 
 echo "[bootstrap-v2] done, shutting down in 60s"

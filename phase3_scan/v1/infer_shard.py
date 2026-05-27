@@ -16,9 +16,9 @@ Usage:
   python -m phase3_scan.v1.infer_shard --mgrs-list mgrs_todo.txt
 
 Reads:
-  data_us/phase3_grid.parquet
-  data_us/phase3_scenes.parquet
-  data_us/stage1_industrial_v1.pt
+  data_us/phase3_scan/phase3_grid.parquet
+  data_us/phase3_scan/phase3_scenes.parquet
+  data_us/phase1/stage1_industrial_v1.pt
 Writes:
   results/{mgrs}.parquet           (locally; uploaded to S3 by bootstrap.sh)
 """
@@ -50,10 +50,10 @@ from rasterio.windows import Window, from_bounds
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env")
 DATA_US = ROOT.parent / "data_us"
-GRID_PATH = DATA_US / "phase3_grid.parquet"
-SCENES_PATH = DATA_US / "phase3_scenes.parquet"
-MODEL_PATH = DATA_US / "stage1_industrial_v1.pt"
-RESULTS_DIR = DATA_US / "phase3_results"
+GRID_PATH = DATA_US / "phase3_scan" / "phase3_grid.parquet"
+SCENES_PATH = DATA_US / "phase3_scan" / "phase3_scenes.parquet"
+MODEL_PATH = DATA_US / "phase1" / "stage1_industrial_v1.pt"
+RESULTS_DIR = DATA_US / "phase3_scan" / "results"
 
 MODEL_ID = "facebook/dinov3-vitl16-pretrain-sat493m"
 IMG_NATIVE = 256          # pixels read per side at S2 native 10m

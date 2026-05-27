@@ -20,10 +20,10 @@ Run locally once after make_grid:
     python -m phase3_scan.find_s2_scenes
 
 Output:
-  data_us/phase3_scenes.parquet
+  data_us/phase3_scan/phase3_scenes.parquet
     cols: mgrs_tile, scene_id, datetime, cloud_cover,
           b04_s3, b03_s3, b02_s3, scl_s3
-  data_us/phase3_grid.parquet  (mgrs_tile column patched in place)
+  data_us/phase3_scan/phase3_grid.parquet  (mgrs_tile column patched in place)
 """
 
 from __future__ import annotations
@@ -43,8 +43,8 @@ from pystac_client import Client
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
 DATA_US = ROOT.parent / "data_us"
-GRID_PATH = DATA_US / "phase3_grid.parquet"
-SCENES_PATH = DATA_US / "phase3_scenes.parquet"
+GRID_PATH = DATA_US / "phase3_scan" / "phase3_grid.parquet"
+SCENES_PATH = DATA_US / "phase3_scan" / "phase3_scenes.parquet"
 
 STAC_URL = "https://earth-search.aws.element84.com/v1"
 COLLECTION = "sentinel-2-l2a"

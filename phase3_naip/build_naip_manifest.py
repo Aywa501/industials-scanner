@@ -45,7 +45,7 @@ SITES_US = Path(__file__).resolve().parents[1]
 load_dotenv(SITES_US / ".env")
 DATA_US = SITES_US.parent / "data_us"
 OUT_DIR = DATA_US / "phase3_naip"
-INDEX_DIR = DATA_US / "naip_indices"
+INDEX_DIR = DATA_US / "external" / "naip_indices"
 INDEX_CACHE = OUT_DIR / "naip_tile_index.parquet"
 
 NAIP_BUCKET = "naip-analytic"
@@ -117,26 +117,55 @@ def detect_naming_convention(s3, state: str, year: int, res: str) -> str:
     return "unknown"
 
 
+def _find_index_shp(s3, state: str, year: int, res: str) -> str | None:
+    """Return the S3 key of an index shapefile under {state}/{year}/{res}/index/, or None.
+
+    NAIP's index filenames are inconsistent across state-years (e.g. NH 2023's
+    shapefile is misnamed ND_NAIP23_QQ.shp). Listing the directory and picking
+    whatever .shp is there is more robust than guessing STATE_NAIPyy_QQ.shp."""
+    prefix = f"{state}/{year}/{res}/index/"
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=NAIP_BUCKET, Prefix=prefix,
+                                   RequestPayer="requester", MaxKeys=50):
+        for obj in page.get("Contents", []):
+            if obj["Key"].endswith(".shp"):
+                return obj["Key"]
+    return None
+
+
 def discover_state_year(s3, state: str) -> tuple[int, str] | None:
-    """Latest (year, res) with an rgbir_cog/ directory for this state; None if none."""
+    """Latest (year, res) with both an rgbir_cog/ directory AND an index/*.shp.
+
+    Both must be present — NAIP sometimes uploads metadata XMLs (fgdc/) before
+    the actual COGs land, or publishes COGs without a tile index (e.g. RI 2023).
+    Year iteration is descending so we always prefer the freshest viable
+    combo."""
     years = _list_prefix(s3, f"{state}/")
     years = sorted([int(y) for y in years if y.isdigit() and len(y) == 4], reverse=True)
     for year in years:
         resolutions = _list_prefix(s3, f"{state}/{year}/")
-        for res in RES_PREFERENCE:
-            if res in resolutions:
-                if _has_objects(s3, f"{state}/{year}/{res}/rgbir_cog/"):
-                    return year, res
-        for res in resolutions:
-            if _has_objects(s3, f"{state}/{year}/{res}/rgbir_cog/"):
-                return year, res
+        ordered = [r for r in RES_PREFERENCE if r in resolutions]
+        ordered.extend(r for r in resolutions if r not in ordered)
+        for res in ordered:
+            if not _has_objects(s3, f"{state}/{year}/{res}/rgbir_cog/"):
+                continue
+            if _find_index_shp(s3, state, year, res) is None:
+                continue
+            return year, res
     return None
 
 
 def download_index(s3, state: str, year: int, res: str) -> Path | None:
-    """Pull the per-state-year index shapefile components to INDEX_DIR."""
-    yy = year % 100
-    base = f"{state.upper()}_NAIP{yy:02d}_QQ"
+    """Pull the per-state-year index shapefile components to INDEX_DIR.
+
+    The .shp basename is discovered dynamically (NAIP filename conventions
+    vary). All sidecar files (.shx/.dbf/.prj/.cpg) are assumed to share the
+    same basename."""
+    shp_key = _find_index_shp(s3, state, year, res)
+    if shp_key is None:
+        print(f"[naip-idx] {state} {year} {res}: no .shp under index/")
+        return None
+    base = shp_key.rsplit("/", 1)[-1][:-4]  # strip directory + .shp
     INDEX_DIR.mkdir(parents=True, exist_ok=True)
     stem = f"{state}_{year}_{res}_{base}"
     out_shp = INDEX_DIR / f"{stem}.shp"

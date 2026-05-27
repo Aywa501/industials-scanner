@@ -9,8 +9,8 @@ Running inference here gives us:
       data center / mine / landfill / airport / agri-processing / other).
 
 Outputs:
-- data_us/stage1_eval_report.json   summary
-- data_us/stage1_wild_topk.csv      top-K wild-set predictions for review
+- data_us/phase1/stage1_eval_report.json   summary
+- data_us/phase1/stage1_wild_topk.csv      top-K wild-set predictions for review
 """
 
 from __future__ import annotations
@@ -29,14 +29,14 @@ from sklearn.metrics import f1_score, precision_recall_curve, roc_auc_score
 ROOT = Path(__file__).resolve().parents[1]
 DATA_US = ROOT.parent / "data_us"
 
-FILT_PATH = DATA_US / "stage1_filtered_dataset.parquet"
-DATASET_PATH = DATA_US / "stage1_dataset.parquet"
-EMB_PATH = DATA_US / "stage1_embeddings.npy"
-INDEX_PATH = DATA_US / "stage1_embeddings_index.parquet"
-MODEL_PATH = DATA_US / "stage1_industrial_v1.pt"
+FILT_PATH = DATA_US / "phase1" / "stage1_filtered_dataset.parquet"
+DATASET_PATH = DATA_US / "phase1" / "stage1_dataset.parquet"
+EMB_PATH = DATA_US / "phase1" / "stage1_embeddings.npy"
+INDEX_PATH = DATA_US / "phase1" / "stage1_embeddings_index.parquet"
+MODEL_PATH = DATA_US / "phase1" / "stage1_industrial_v1.pt"
 
-OUT_REPORT = DATA_US / "stage1_eval_report.json"
-OUT_TOPK = DATA_US / "stage1_wild_topk.csv"
+OUT_REPORT = DATA_US / "phase1" / "stage1_eval_report.json"
+OUT_TOPK = DATA_US / "phase1" / "stage1_wild_topk.csv"
 
 TOPK = 100
 

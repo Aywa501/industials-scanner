@@ -13,10 +13,10 @@ PREFIX="s3://${BUCKET}/scan-v2-bundle"
 echo "[push-v2] target: $PREFIX"
 
 # Data the worker reads
-aws s3 cp data_us/phase3_grid.parquet      "$PREFIX/phase3_grid.parquet"
-aws s3 cp data_us/phase3_scenes.parquet    "$PREFIX/phase3_scenes.parquet"
-aws s3 cp data_us/overture_industrial_conus_2025_aligned.parquet "$PREFIX/overture_industrial_conus_2025_aligned.parquet"
-aws s3 cp data_us/v2/probes/probe_dino_vitb.pt "$PREFIX/probe_dino_vitb.pt"
+aws s3 cp data_us/phase3_scan/phase3_grid.parquet      "$PREFIX/phase3_grid.parquet"
+aws s3 cp data_us/phase3_scan/phase3_scenes.parquet    "$PREFIX/phase3_scenes.parquet"
+aws s3 cp data_us/external/overture_industrial_conus_2025_aligned.parquet "$PREFIX/overture_industrial_conus_2025_aligned.parquet"
+aws s3 cp data_us/phase2/v2/probes/probe_dino_vitb.pt "$PREFIX/probe_dino_vitb.pt"
 
 # Worker code
 aws s3 cp sites_us/phase3_scan/v2/infer_shard_v2.py "$PREFIX/code/sites_us/phase3_scan/v2/infer_shard_v2.py"

@@ -1,10 +1,10 @@
 """Merge per-shard embedding files written by `v2_train.py --num-shards N`.
 
-Reads:  data_us/v2/emb_<MODEL>_shard0.npy ... emb_<MODEL>_shard{N-1}.npy
-        data_us/v2/v2_embeddings_index_shard0.parquet ... shard{N-1}.parquet
+Reads:  data_us/phase2/v2/emb_<MODEL>_shard0.npy ... emb_<MODEL>_shard{N-1}.npy
+        data_us/phase2/v2/v2_embeddings_index_shard0.parquet ... shard{N-1}.parquet
 
-Writes: data_us/v2/emb_<MODEL>.npy            (concatenated)
-        data_us/v2/v2_embeddings_index.parquet (concatenated, row_idx re-sequenced)
+Writes: data_us/phase2/v2/emb_<MODEL>.npy            (concatenated)
+        data_us/phase2/v2/v2_embeddings_index.parquet (concatenated, row_idx re-sequenced)
 
 Usage:
     python -m sites_us.phase2_classifier.v2.v2_merge_shards

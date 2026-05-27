@@ -1,8 +1,8 @@
 """Stage 3 Part 2, Steps 1-2: per-S2-candidate Overture retrieval + Prune A.
 
 Reads:
-  data_us/phase3_candidates_v2.parquet
-  data_us/overture_industrial_conus_2025_aligned.parquet
+  data_us/phase3_scan/phase3_candidates_v2.parquet
+  data_us/external/overture_industrial_conus_2025_aligned.parquet
 Writes:
   data_us/phase3_naip/candidates_with_buildings.parquet   (per-candidate summary)
   data_us/phase3_naip/candidate_buildings.parquet         (per-(candidate, building))
@@ -41,8 +41,8 @@ import pandas as pd
 from sklearn.neighbors import BallTree
 
 DATA_US = Path(__file__).resolve().parents[2] / "data_us"
-CANDIDATES_PATH = DATA_US / "phase3_candidates_v2.parquet"
-OVERTURE_PATH = DATA_US / "overture_industrial_conus_2025_aligned.parquet"
+CANDIDATES_PATH = DATA_US / "phase3_scan" / "phase3_candidates_v2.parquet"
+OVERTURE_PATH = DATA_US / "external" / "overture_industrial_conus_2025_aligned.parquet"
 OUT_DIR = DATA_US / "phase3_naip"
 
 EARTH_R_M = 6_371_000.0

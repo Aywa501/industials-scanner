@@ -23,12 +23,12 @@ Usage:
   python -m phase3_scan.v2.infer_shard_v2 --mgrs-list mgrs_todo.txt
 
 Reads:
-  data_us/phase3_grid.parquet
-  data_us/phase3_scenes.parquet
-  data_us/v2/probes/probe_dino_vitb.pt
-  data_us/overture_industrial_conus_2025_aligned.parquet (for building pre-filter)
+  data_us/phase3_scan/phase3_grid.parquet
+  data_us/phase3_scan/phase3_scenes.parquet
+  data_us/phase2/v2/probes/probe_dino_vitb.pt
+  data_us/external/overture_industrial_conus_2025_aligned.parquet (for building pre-filter)
 Writes:
-  data_us/phase3_results_v2/{mgrs}.parquet
+  data_us/phase3_scan/results_v2/{mgrs}.parquet
 """
 
 from __future__ import annotations
@@ -63,11 +63,11 @@ from sklearn.neighbors import BallTree
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env")
 DATA_US = ROOT.parent / "data_us"
-GRID_PATH = DATA_US / "phase3_grid.parquet"
-SCENES_PATH = DATA_US / "phase3_scenes.parquet"
-MODEL_PATH = DATA_US / "v2" / "probes" / "probe_dino_vitb.pt"
-OVERTURE_PATH = DATA_US / "overture_industrial_conus_2025_aligned.parquet"
-RESULTS_DIR = DATA_US / "phase3_results_v2"
+GRID_PATH = DATA_US / "phase3_scan" / "phase3_grid.parquet"
+SCENES_PATH = DATA_US / "phase3_scan" / "phase3_scenes.parquet"
+MODEL_PATH = DATA_US / "phase2" / "v2" / "probes" / "probe_dino_vitb.pt"
+OVERTURE_PATH = DATA_US / "external" / "overture_industrial_conus_2025_aligned.parquet"
+RESULTS_DIR = DATA_US / "phase3_scan" / "results_v2"
 
 MODEL_ID = "facebook/dinov3-vitb16-pretrain-lvd1689m"
 IMG_NATIVE = 256

@@ -34,7 +34,7 @@ from shapely.strtree import STRtree
 
 DATA_US = Path(__file__).resolve().parents[2] / "data_us"
 CANDIDATE_BUILDINGS = DATA_US / "phase3_naip" / "candidate_buildings.parquet"
-NC_GEOFABRIK_ZIP = DATA_US / "osm" / "nc" / "north-carolina-latest-free.shp.zip"
+NC_GEOFABRIK_ZIP = DATA_US / "external" / "osm" / "nc" / "north-carolina-latest-free.shp.zip"
 OUT_DIR = DATA_US / "phase3_naip" / "osm_cut_test"
 
 CUT_FCLASS = {

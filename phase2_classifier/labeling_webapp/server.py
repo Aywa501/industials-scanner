@@ -27,10 +27,10 @@ QUEUE_PATH = ARTIFACTS / QUEUE_FILE
 STATIC_DIR = Path(__file__).parent / "static"
 
 DATA_US = ROOT.parent / "data_us"
-LABELS_PATH = DATA_US / "manual_labels.parquet"
-FLAGS_PATH = DATA_US / "manual_site_flags.parquet"
-NOTES_PATH = DATA_US / "manual_site_notes.parquet"
-OUTLINES_PATH = DATA_US / "manual_site_outlines.parquet"
+LABELS_PATH = DATA_US / "labels" / "manual_labels.parquet"
+FLAGS_PATH = DATA_US / "labels" / "manual_site_flags.parquet"
+NOTES_PATH = DATA_US / "labels" / "manual_site_notes.parquet"
+OUTLINES_PATH = DATA_US / "labels" / "manual_site_outlines.parquet"
 
 VALID_LABELS = {"complete", "partial", "not_a_site", "unsure"}
 VALID_FLAGS = {"bad_geocode"}

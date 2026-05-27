@@ -1,5 +1,9 @@
 # Stage 1 Industrial Classifier — Plan
 
+> **STATUS (2026-05-25): SUPERSEDED.** This v1 plan described a single-encoder DINOv3 SAT-493M linear probe on 682 manual labels. The shipped detector is **v3** — a 5-encoder bake-off trained on Overture-industrial-CONUS positives. Code lives at `sites_us/phase2_classifier/v3/`; artifacts at `data_us/phase2/v3/`. CONUS scan complete (696K rows). The current active work is **Stage 2b** (Landsat 2008-vs-2022 temporal stability filter) — see `sites_us/phase2_classifier/v3/landsat_change_sanity.py` and memory `stage2b-landsat-filter`. Original v1 plan preserved below as historical reference.
+
+---
+
 ## Goal
 
 Cheap, recall-first binary classifier deciding `industrial` vs `not` on a single Sentinel-2 chip (B4/B3/B2/B8, 10 m, 256×256). Runs on every CONUS grid cell at Phase 3 step 2 as the load-bearing sieve. Recall > precision; quarries / solar / big-box are *expected* to pass through and get filtered downstream.
@@ -70,11 +74,11 @@ Hold out a small chunk of unfiltered random-CONUS chips (no NN-filter applied) a
 
 Files to add under `sites_us/phase2_classifier/`:
 
-- `build_dataset.py` — assembles positive/negative chip set per spec, writes `data_us/stage1_dataset.parquet` with columns `(site_id, year, chip_uri, label, site_type, source)`.
-- `embed.py` — DINOv3 ViT-L/16 SAT-493M inference over the chip set, writes `data_us/stage1_embeddings.npy` + index.
-- `filter_negatives.py` — embedding-NN filter for candidate negatives, writes filtered set + `data_us/stage1_relabel_shortlist.json` (chips for user to confirm via labeling webapp).
-- `train_industrial.py` — 5-fold CV linear probe training, writes `data_us/stage1_industrial_v1.pt` + per-fold metrics.
-- `eval_industrial.py` — wild test set inference + by-category FP bucketing, writes `data_us/stage1_eval_report.json`.
+- `build_dataset.py` — assembles positive/negative chip set per spec, writes `data_us/phase1/stage1_dataset.parquet` with columns `(site_id, year, chip_uri, label, site_type, source)`.
+- `embed.py` — DINOv3 ViT-L/16 SAT-493M inference over the chip set, writes `data_us/phase1/stage1_embeddings.npy` + index.
+- `filter_negatives.py` — embedding-NN filter for candidate negatives, writes filtered set + `data_us/phase1/stage1_relabel_shortlist.json` (chips for user to confirm via labeling webapp).
+- `train_industrial.py` — 5-fold CV linear probe training, writes `data_us/phase1/stage1_industrial_v1.pt` + per-fold metrics.
+- `eval_industrial.py` — wild test set inference + by-category FP bucketing, writes `data_us/phase1/stage1_eval_report.json`.
 
 ## Sequencing
 

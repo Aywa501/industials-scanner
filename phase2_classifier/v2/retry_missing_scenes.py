@@ -33,8 +33,8 @@ from phase2_classifier.v2.v2_build_scenes_index import (
 
 ROOT = Path(__file__).resolve().parents[3]
 DATA_US = ROOT / "data_us"
-MANIFEST = DATA_US / "v2_dataset_manifest.parquet"
-SCENES_PATH = DATA_US / "v2_scenes_index.parquet"
+MANIFEST = DATA_US / "phase2" / "v2_dataset_manifest.parquet"
+SCENES_PATH = DATA_US / "phase2" / "v2_scenes_index.parquet"
 
 # Conservative settings vs. the main script (which uses 8 workers + 5 retries
 # at 1-16s backoff). Throttled local IPs need even gentler patterns.

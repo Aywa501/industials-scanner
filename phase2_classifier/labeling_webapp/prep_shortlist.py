@@ -1,7 +1,7 @@
 """Render chips + build queue for the relabel-shortlist webapp pass.
 
 Reads:
-- data_us/stage1_relabel_shortlist.json   (50 chips × 12 sites)
+- data_us/phase1/stage1_relabel_shortlist.json   (50 chips × 12 sites)
 - gs://{GCS_BUCKET}/manifest/s2_chip_manifest.parquet
 
 For each site in the shortlist, downloads + renders ALL 9 years (gives the
@@ -37,7 +37,7 @@ CHIPS_DIR = ARTIFACTS / "chips"
 QUEUE_PATH = ARTIFACTS / "shortlist_queue.json"
 
 DATA_US = ROOT.parent / "data_us"
-SHORTLIST_PATH = DATA_US / "stage1_relabel_shortlist.json"
+SHORTLIST_PATH = DATA_US / "phase1" / "stage1_relabel_shortlist.json"
 
 RENDER_PX = 512
 

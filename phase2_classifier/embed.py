@@ -1,8 +1,8 @@
 """Embed every chip in stage1_dataset.parquet with DINOv3 ViT-L/16 SAT-493M.
 
 Outputs:
-- data_us/stage1_embeddings.npy             (N, 1024) float16
-- data_us/stage1_embeddings_index.parquet   site_id, year, row_idx, label,
+- data_us/phase1/stage1_embeddings.npy             (N, 1024) float16
+- data_us/phase1/stage1_embeddings_index.parquet   site_id, year, row_idx, label,
                                             site_type, source
 
 Notes:
@@ -37,9 +37,9 @@ GCP_PROJECT = os.getenv("GCP_PROJECT", "")
 GCS_BUCKET = os.getenv("GCS_BUCKET", "")
 
 DATA_US = ROOT.parent / "data_us"
-DATASET_PATH = DATA_US / "stage1_dataset.parquet"
-EMB_PATH = DATA_US / "stage1_embeddings.npy"
-INDEX_PATH = DATA_US / "stage1_embeddings_index.parquet"
+DATASET_PATH = DATA_US / "phase1" / "stage1_dataset.parquet"
+EMB_PATH = DATA_US / "phase1" / "stage1_embeddings.npy"
+INDEX_PATH = DATA_US / "phase1" / "stage1_embeddings_index.parquet"
 
 MODEL_ID = "facebook/dinov3-vitl16-pretrain-sat493m"
 HIDDEN = 1024

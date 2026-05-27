@@ -2,12 +2,12 @@
 
 Reads:
 - gs://{GCS_BUCKET}/manifest/s2_chip_manifest.parquet  (all S2 chips)
-- data_us/manufacturing_announcements_geocoded.csv     (anchor metadata, raw)
-- data_us/manual_labels.parquet                        (greenfield labels)
-- data_us/manual_site_notes.parquet                    (IMPORTANT overrides + bad-geocode notes)
+- data_us/labels/manufacturing_announcements_geocoded.csv     (anchor metadata, raw)
+- data_us/labels/manual_labels.parquet                        (greenfield labels)
+- data_us/labels/manual_site_notes.parquet                    (IMPORTANT overrides + bad-geocode notes)
 
 Writes:
-- data_us/stage1_dataset.parquet  columns: site_id, year, tile_uri, label,
+- data_us/phase1/stage1_dataset.parquet  columns: site_id, year, tile_uri, label,
                                             site_type, source
 
 Rules (see sites_us/phase2_classifier/PLAN.md):
@@ -41,10 +41,10 @@ GCS_BUCKET = os.getenv("GCS_BUCKET", "")
 MANIFEST_URI = f"gs://{GCS_BUCKET}/manifest/s2_chip_manifest.parquet"
 
 DATA_US = ROOT.parent / "data_us"
-ANCHORS_CSV = DATA_US / "manufacturing_announcements_geocoded.csv"
-LABELS_PATH = DATA_US / "manual_labels.parquet"
-NOTES_PATH = DATA_US / "manual_site_notes.parquet"
-OUT_PATH = DATA_US / "stage1_dataset.parquet"
+ANCHORS_CSV = DATA_US / "labels" / "manufacturing_announcements_geocoded.csv"
+LABELS_PATH = DATA_US / "labels" / "manual_labels.parquet"
+NOTES_PATH = DATA_US / "labels" / "manual_site_notes.parquet"
+OUT_PATH = DATA_US / "phase1" / "stage1_dataset.parquet"
 
 MIN_GEOCODE_DP = 4
 POSITIVE_GREENFIELD_LABELS = {"complete", "partial"}

@@ -5,7 +5,7 @@ Filter: CONUS bbox AND (subtype IN ('industrial','commercial') OR approx_area_m2
 approx_area_m2 is computed from the bbox struct using equirectangular approx
 (good enough at building scale — we only need it as a coarse size filter).
 
-Output: data_us/overture_industrial_conus.parquet
+Output: data_us/external/overture_industrial_conus.parquet
 Columns: id, lon, lat, bbox_xmin/xmax/ymin/ymax, approx_area_m2, class, subtype
 """
 

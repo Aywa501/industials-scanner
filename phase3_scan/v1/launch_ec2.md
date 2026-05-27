@@ -62,18 +62,18 @@ tail -f scan.out
 
 The bootstrap loops over `~970` MGRS shards. Each shard prints a tiles/sec rate. On L40S in-region expect ~30–50 tiles/sec (vs 5/sec on local MPS), so the full scan should finish in **~15–25 hours** at a cost of **~$25–35** ($1.86/hr × wall time).
 
-Per-shard results land in `data_us/phase3_results/{mgrs}.parquet` and are synced to S3 in batches. The scan is **resumable** — if the box dies, relaunch and `bootstrap.sh` skips already-done MGRS tiles.
+Per-shard results land in `data_us/phase3_scan/results/{mgrs}.parquet` and are synced to S3 in batches. The scan is **resumable** — if the box dies, relaunch and `bootstrap.sh` skips already-done MGRS tiles.
 
 ## 5. Local: pull results and aggregate
 
 When done:
 
 ```
-aws s3 sync s3://industrials-scanner-us-west-2/phase3_results/ data_us/phase3_results/
+aws s3 sync s3://industrials-scanner-us-west-2/phase3_results/ data_us/phase3_scan/results/
 python -m phase3_scan.v1.aggregate
 ```
 
-Outputs `data_us/phase3_candidates.parquet` — DBSCAN-clustered candidate sites ranked by `max_prob × log(n_tiles)`.
+Outputs `data_us/phase3_scan/phase3_candidates.parquet` — DBSCAN-clustered candidate sites ranked by `max_prob × log(n_tiles)`.
 
 ## 6. Terminate the instance
 
